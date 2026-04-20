@@ -48,6 +48,22 @@ export class ScansController {
     return this.scansService.findAll(userId);
   }
 
+  @Post(':id/detect')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Trigger AI damage detection on a scan' })
+  triggerDetection(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.scansService.triggerDetection(id, userId);
+  }
+
+  @Post(':id/estimate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Trigger cost estimation for a completed scan' })
+  triggerEstimation(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.scansService.triggerEstimation(id, userId);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

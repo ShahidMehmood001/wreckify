@@ -5,13 +5,20 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AiClientService } from '../ai-client/ai-client.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { CreateGuestScanDto } from './dto/create-guest-scan.dto';
-import { AIProvider } from '@prisma/client';
+import { AIProvider, ScanStatus } from '@prisma/client';
+import { decrypt } from '../../common/utils/encryption.util';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ScansService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiClient: AiClientService,
+    private config: ConfigService,
+  ) {}
 
   async createGuestScan(dto: CreateGuestScanDto) {
     if (dto.guestSessionId) {
@@ -80,6 +87,86 @@ export class ScansService {
     });
   }
 
+  async triggerDetection(scanId: string, userId: string) {
+    const scan = await this.getScanOrThrow(scanId, userId);
+
+    if (!scan.images.length) {
+      throw new BadRequestException('Upload at least one image before running detection');
+    }
+
+    await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.PROCESSING } });
+
+    try {
+      const { provider, apiKey } = await this.resolveAiConfig(userId, scan.aiProvider);
+
+      const result = await this.aiClient.detect({
+        scan_id: scanId,
+        image_urls: scan.images.map((i) => i.url),
+        provider,
+        api_key: apiKey,
+      });
+
+      await this.prisma.detectedPart.createMany({
+        data: result.detected_parts.map((p: any) => ({
+          scanId,
+          partName: p.part_name,
+          severity: p.severity,
+          confidenceScore: p.confidence_score,
+          boundingBox: p.bounding_box,
+          description: p.description,
+        })),
+      });
+
+      await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.COMPLETED } });
+      return this.getScanOrThrow(scanId, userId);
+    } catch (err) {
+      await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.FAILED } });
+      throw err;
+    }
+  }
+
+  async triggerEstimation(scanId: string, userId: string) {
+    const scan = await this.getScanOrThrow(scanId, userId);
+
+    if (!scan.detectedParts.length) {
+      throw new BadRequestException('Run damage detection before requesting a cost estimate');
+    }
+
+    if (scan.costEstimate) return scan.costEstimate;
+
+    const { provider, apiKey } = await this.resolveAiConfig(userId, scan.aiProvider);
+
+    const userProfile = await this.prisma.userProfile.findUnique({ where: { userId } });
+
+    const result = await this.aiClient.estimate({
+      scan_id: scanId,
+      detected_parts: scan.detectedParts.map((p) => ({
+        part_name: p.partName,
+        severity: p.severity,
+        confidence_score: p.confidenceScore,
+        bounding_box: p.boundingBox,
+        description: p.description,
+      })),
+      vehicle: scan.vehicle
+        ? { make: scan.vehicle.make, model: scan.vehicle.model, year: scan.vehicle.year }
+        : undefined,
+      provider,
+      api_key: apiKey,
+      city: userProfile?.city || 'Lahore',
+    });
+
+    return this.prisma.costEstimate.create({
+      data: {
+        scanId,
+        totalMin: result.total_min,
+        totalMax: result.total_max,
+        currency: result.currency,
+        lineItems: result.line_items,
+        narrative: result.narrative,
+      },
+    });
+  }
+
   async findAll(userId: string) {
     return this.prisma.scan.findMany({
       where: { userId },
@@ -94,6 +181,22 @@ export class ScansService {
 
   async findOne(scanId: string, userId: string) {
     return this.getScanOrThrow(scanId, userId);
+  }
+
+  private async resolveAiConfig(userId: string, defaultProvider: AIProvider) {
+    const aiConfig = await this.prisma.userAIConfig.findUnique({ where: { userId } });
+    const encKey = this.config.get<string>('encryptionKey') || '';
+
+    if (aiConfig?.apiKeyHash) {
+      try {
+        const decryptedKey = decrypt(aiConfig.apiKeyHash, encKey);
+        return { provider: aiConfig.provider as string, apiKey: decryptedKey };
+      } catch {
+        // fall through to default
+      }
+    }
+
+    return { provider: defaultProvider as string, apiKey: undefined };
   }
 
   private async getScanOrThrow(scanId: string, userId: string) {
