@@ -1,0 +1,119 @@
+version: "3.9"
+
+# ─── Shared environment helpers ───────────────────────────────────
+x-db-url: &db-url
+  DATABASE_URL: postgresql://wreckify:wreckify@postgres:5432/wreckify
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wreckify
+      POSTGRES_PASSWORD: wreckify
+      POSTGRES_DB: wreckify
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wreckify -d wreckify"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── NestJS API ─────────────────────────────────────────────────
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      <<: *db-url
+      PORT: 3001
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-change_me_jwt_secret_32_chars_min}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_refresh_secret_32_chars}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_INTERNAL_KEY: ${AI_SERVICE_INTERNAL_KEY:-wreckify_internal_key_change_me}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-wreckify_aes_key_32_chars_padded}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Python AI Service ──────────────────────────────────────────
+  ai-service:
+    build:
+      context: ./apps/ai-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *db-url
+      PORT: 8000
+      INTERNAL_API_KEY: ${AI_SERVICE_INTERNAL_KEY:-wreckify_internal_key_change_me}
+      DEFAULT_GEMINI_API_KEY: ${DEFAULT_GEMINI_API_KEY:-}
+      YOLO_MODEL_PATH: ./weights/best.pt
+    volumes:
+      - ai_weights:/app/weights
+      - ai_generated:/app/generated
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Scrapy Scraper ─────────────────────────────────────────────
+  scraper:
+    build:
+      context: ./apps/scraper
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *db-url
+      SCRAPER_INTERVAL_HOURS: ${SCRAPER_INTERVAL_HOURS:-12}
+      OLX_BASE_URL: https://www.olx.com.pk
+      PAKWHEELS_BASE_URL: https://www.pakwheels.com
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ── Next.js Web ────────────────────────────────────────────────
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  ai_weights:
+  ai_generated:
