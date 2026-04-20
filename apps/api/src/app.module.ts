@@ -6,6 +6,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { ScansModule } from './modules/scans/scans.module';
+import { WorkshopsModule } from './modules/workshops/workshops.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { PlansModule } from './modules/plans/plans.module';
 
 @Module({
   imports: [
@@ -18,6 +22,10 @@ import { ScansModule } from './modules/scans/scans.module';
     UsersModule,
     VehiclesModule,
     ScansModule,
+    WorkshopsModule,
+    ReportsModule,
+    AdminModule,
+    PlansModule,
   ],
 })
 export class AppModule {}
