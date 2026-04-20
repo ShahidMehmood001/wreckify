@@ -338,10 +338,10 @@ model ScraperLog {
   id           String    @id @default(cuid())
   source       String
   status       String
-  recordsAdded Int       @default(0)
-  errorMessage String?
-  startedAt    DateTime
-  finishedAt   DateTime?
+  recordsAdded Int       @default(0) @map("records_added")
+  errorMessage String?   @map("error_message")
+  startedAt    DateTime  @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
 
   @@map("scraper_logs")
 }

@@ -17,11 +17,11 @@ langchain-google-genai==2.0.0
 langchain-openai==0.2.0
 
 # ZhipuAI
-zhipuai==2.1.5
+zhipuai>=2.1.4
 
 # Database (for estimation tools querying scraped prices)
 sqlalchemy==2.0.35
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.10
 
 # Image processing
 opencv-python-headless==4.10.0.84
