@@ -11,6 +11,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PlansModule } from './modules/plans/plans.module';
 import { AiClientModule } from './modules/ai-client/ai-client.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AiClientModule } from './modules/ai-client/ai-client.module';
     AdminModule,
     PlansModule,
     AiClientModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
