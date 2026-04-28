@@ -113,6 +113,19 @@ export interface Workshop {
   services: { id: string; name: string }[];
 }
 
+export type InquiryStatus = "PENDING" | "RESPONDED" | "CLOSED";
+
+export interface RepairInquiry {
+  id: string;
+  workshopId: string;
+  senderId: string;
+  scanId?: string;
+  message?: string;
+  status: InquiryStatus;
+  createdAt: string;
+  sender?: { id: string; email: string; profile?: UserProfile };
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;

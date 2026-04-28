@@ -1,5 +1,5 @@
-import { IsString, IsEnum } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsEnum, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { InquiryStatus } from '@prisma/client';
 
 export class RespondInquiryDto {
@@ -7,5 +7,5 @@ export class RespondInquiryDto {
   @IsEnum(InquiryStatus)
   status: InquiryStatus;
 
-  @ApiProperty() @IsString() message: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() message?: string;
 }
