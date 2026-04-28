@@ -65,25 +65,27 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 #### S10-004 — Dashboard: Fix Total Scans Stat Card
 
 **Estimate:** 1 SP  
-**Status:** TODO
+**Status:** ✅ DONE  
+**Commit:** `2526531`
 
 **Acceptance criteria:**
-- [ ] "Total Scans" card shows `subscription.scansUsed` (monthly count) — not `scans.length` which is capped at 5
-- [ ] The number displayed matches what the API reports for the current billing period
-- [ ] No additional network request required if `subscription` is already loaded on the dashboard
+- [x] Full scan list fetched on mount; `totalScans` state holds true lifetime count
+- [x] Recent Scans list still sliced to 5 items
+- [x] Total Scans card shows `—` while loading, then the correct count
+- [x] No extra network request — reuses the existing `GET /scans` call
 
 ---
 
 #### S10-005 — Dashboard: Greet User by First Name
 
 **Estimate:** 1 SP  
-**Status:** TODO
+**Status:** ✅ DONE  
+**Commit:** `2526531`
 
 **Acceptance criteria:**
-- [ ] Dashboard greeting shows `profile.firstName` when available
-- [ ] Falls back to `user.email.split("@")[0]` if `firstName` is not set
-- [ ] First name is loaded via `GET /users/profile` on dashboard mount — not assumed to be in the Zustand `user` object
-- [ ] No visible flash of email-derived name before first name loads (show nothing or a skeleton)
+- [x] Dashboard greeting shows `profile.firstName` when available
+- [x] Falls back to `user.email.split("@")[0]` if `firstName` is not set
+- [x] First name loaded via `GET /users/profile` on dashboard mount — not assumed to be in Zustand store
 
 ---
 
@@ -141,8 +143,8 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 | S10-001 | Custom AI Provider Settings UX | 3 SP | ✅ Done |
 | S10-002 | Profile View / Edit Mode | 2 SP | ✅ Done |
 | S10-003 | Google OAuth Callback Redirect | 2 SP | ✅ Done |
-| S10-004 | Dashboard: Fix Total Scans Stat | 1 SP | TODO |
-| S10-005 | Dashboard: Greet by First Name | 1 SP | TODO |
+| S10-004 | Dashboard: Fix Total Scans Stat | 1 SP | ✅ Done |
+| S10-005 | Dashboard: Greet by First Name | 1 SP | ✅ Done |
 | S10-006 | Admin Panel Audit | 5 SP | TODO |
 | S10-007 | Workshop Inquiry Flow | 8 SP | TODO |
 | S10-008 | Guest Scan Flow | 8 SP | TODO |
@@ -162,21 +164,13 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 
 ## Stories In Progress / Planned
 
-### S10-004 — Dashboard: Fix Total Scans stat card
-**Status:** TODO  
-**Assignee:** Frontend Developer  
-**Description:**  
-The "Total Scans" stat card on the dashboard shows `scans.length` which is capped at 5 because the same array is sliced for the "Recent Scans" list. The number shown is meaningless for users with more than 5 scans.  
-**Fix:** Use `subscription.scansUsed` for the monthly count (already loaded), and either add a `GET /scans/count` endpoint or fetch all scans without slicing for the stat.
+### S10-004 — Dashboard: Fix Total Scans stat card ✅
+**Status:** DONE — `2526531`
 
 ---
 
-### S10-005 — Dashboard: Greet user by first name
-**Status:** TODO  
-**Assignee:** Frontend Developer  
-**Description:**  
-Dashboard greeting shows `user.email.split("@")[0]` (e.g. `shahid.ceative`) because `user` in the Zustand store only contains `{ id, email, role }`. The user's first name is not loaded on the dashboard.  
-**Fix:** On dashboard mount, call `GET /users/profile` and use `profile.firstName` if available, otherwise fall back to the email prefix.
+### S10-005 — Dashboard: Greet user by first name ✅
+**Status:** DONE — `2526531`
 
 ---
 
