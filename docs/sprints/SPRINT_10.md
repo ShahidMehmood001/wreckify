@@ -1,8 +1,10 @@
 # Sprint 10 — MVP Completion & UX Polish
 
-**Status:** IN PROGRESS 🔄  
+**Status:** CLOSED ✅  
 **Start date:** 2026-04-28  
-**Target end date:** TBD  
+**Target end date:** 2026-04-28  
+**Actual end date:** 2026-04-28  
+**Velocity:** 30 SP (8 stories delivered)
 **Sprint type:** Feature completion + UX improvements
 
 ---
@@ -127,15 +129,18 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 #### S10-008 — Guest Scan Flow on Landing Page
 
 **Estimate:** 8 SP  
-**Status:** TODO
+**Status:** ✅ DONE  
+**Commit:** `95d0936`
 
 **Acceptance criteria:**
-- [ ] A `guestSessionId` (UUID) is generated and persisted in `localStorage` on first visit to `/`
-- [ ] Landing page upload form calls `POST /scans/guest`, then `POST /scans/:id/images`, then `POST /scans/:id/detect` in sequence
-- [ ] Scan results (detected parts + cost estimate) are displayed inline on the landing page without navigating away
-- [ ] After results, a prompt appears: "Register to save your report and get 3 free scans/month"
-- [ ] If the guest has already used their 1 free scan (same `guestSessionId`), show a message and prompt to register
-- [ ] No authenticated-only API calls are made — guest endpoints only
+- [x] `guestSessionId` generated via `crypto.randomUUID()` and persisted in `localStorage` on first visit
+- [x] Landing page calls `POST /scans/guest` → `POST /scans/:id/images/guest` → `POST /scans/:id/detect/guest` in sequence
+- [x] Backend: added `addImagesGuest` and `triggerDetectionGuest` service methods with `getGuestScanOrThrow` validating `isGuest + guestSessionId` ownership
+- [x] Backend: two new `@Public()` endpoints in controller — multipart image upload and JSON detect
+- [x] Detected parts shown inline with part name, severity badge, and confidence percentage
+- [x] Post-result CTA: "Create Free Account" links to `/register`; "Scan another photo" resets the flow
+- [x] 403 / limit-reached response shows dedicated screen: "You've used your free guest scan" with register prompt
+- [x] All calls use guest-only endpoints — no JWT required
 
 ---
 
@@ -150,7 +155,7 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 | S10-005 | Dashboard: Greet by First Name | 1 SP | ✅ Done |
 | S10-006 | Admin Panel Audit | 5 SP | ✅ Done |
 | S10-007 | Workshop Inquiry Flow | 8 SP | ✅ Done |
-| S10-008 | Guest Scan Flow | 8 SP | TODO |
+| S10-008 | Guest Scan Flow | 8 SP | ✅ Done |
 | **Total** | | **30 SP** | |
 
 ---
@@ -187,16 +192,8 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 
 ---
 
-### S10-008 — Guest Scan Flow on Landing Page
-**Status:** TODO  
-**Assignee:** Full Stack Developer  
-**Description:**  
-Per PRD section 4.1 and 6, guests should be able to run 1 free scan per session without registering. The `POST /scans/guest` backend endpoint already exists and enforces 1 scan per `guestSessionId`. The landing page (`/`) exists but the guest scan upload UI is not wired to the backend.  
-**Scope:**
-- Generate a `guestSessionId` (UUID) and store in `localStorage` on first visit
-- Wire the landing page upload form to `POST /scans/guest`, then `POST /scans/:id/images`, then `POST /scans/:id/detect`
-- Show results inline on the landing page
-- After results, show a prompt: "Register to save your report and get 3 free scans/month"
+### S10-008 — Guest Scan Flow on Landing Page ✅
+**Status:** DONE — `95d0936`
 
 ---
 
@@ -205,12 +202,56 @@ Per PRD section 4.1 and 6, guests should be able to run 1 free scan per session 
 See [`docs/DEFINITION_OF_DONE.md`](../DEFINITION_OF_DONE.md) for the full project-wide checklist.
 
 Sprint-specific requirements:
-- [ ] All "In Progress / Planned" stories above are completed and tested
-- [ ] No console errors on any page in Docker production build
-- [ ] Admin panel fully functional for all three admin roles (user management, workshop approval, scraper health)
-- [ ] Guest can complete a scan on the landing page without registering
-- [ ] All API endpoints for new features documented in Swagger
-- [ ] Sprint retrospective written and this document updated to CLOSED
+- [x] All stories completed and tested
+- [x] Admin panel functional (user management, workshop approval, scraper health, analytics)
+- [x] Guest can complete a scan on the landing page without registering
+- [x] New API endpoints documented in Swagger (`GET /users/ai-config`, guest image + detect endpoints)
+- [ ] No console errors on any page in Docker production build — requires rebuild to verify
+- [x] Sprint retrospective written and document updated to CLOSED
+
+---
+
+## Sprint Review
+
+**Date:** 2026-04-28  
+**Attendees:** Shahid Awan (Developer / Product Owner)
+
+**Sprint goal:** Complete remaining PRD MVP features and leave product demo-ready.  
+**Result:** ✅ Goal met — all 8 stories delivered, 30 SP.
+
+### Demo checklist (all passed ✅)
+
+- [x] Settings → Custom AI Provider: FREE plan shows locked card; PRO shows form with key badge
+- [x] Settings → Profile: read-only by default, edit mode on click, cancel resets
+- [x] Google OAuth: consent → `/callback` → dashboard (no raw JSON)
+- [x] Dashboard: Total Scans shows true lifetime count; greeting uses first name
+- [x] Admin panel: user list, role change, activate/deactivate, workshop approval, scraper logs, analytics
+- [x] Workshops page: "Send Inquiry" button → dialog → OWNER submits inquiry
+- [x] Workshops page: MECHANIC sees incoming inquiries with Close action
+- [x] Landing page: upload photo → AI detects damage → results shown inline → register CTA
+- [x] Landing page: repeat guest visit shows "used your free scan" screen with register prompt
+
+---
+
+## Sprint Retrospective
+
+### What Went Well
+
+- All 8 planned stories delivered in a single sprint day — clean scope and clear acceptance criteria made execution fast
+- Backend was more complete than expected: inquiry endpoints, guest scan endpoint, and the full admin service were all already implemented from Sprint 8, reducing S10-007 and S10-006 to mostly frontend + bug fix work
+- Sprint documentation (DoD, acceptance criteria, story points) written before code — made the work measurable
+
+### What Went Wrong
+
+- Two bugs found during story work: `listUsers` returning `{ users, total }` object instead of array (crashed admin panel), and `RespondInquiryDto.message` being required (blocked inquiry close action)
+- The guest scan needed two new backend endpoints not originally scoped — `POST :id/images/guest` and `POST :id/detect/guest` — because the existing image/detect endpoints require JWT
+
+### Action Items
+
+| # | Action | Owner | Target Sprint |
+|---|--------|-------|---------------|
+| A10-1 | Rebuild Docker and smoke-test all Sprint 10 features in the containerised environment | Shahid Awan | Before Sprint 11 |
+| A10-2 | Write E2E smoke test covering guest scan flow (from Sprint 9 action item A9-1) | Shahid Awan | Sprint 11 |
 
 ---
 
