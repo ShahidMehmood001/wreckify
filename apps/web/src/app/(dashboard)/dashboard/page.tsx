@@ -13,25 +13,33 @@ import type { Scan, Subscription } from "@/types";
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const [scans, setScans] = useState<Scan[]>([]);
+  const [totalScans, setTotalScans] = useState(0);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      api.get("/scans").then((r) => setScans(r.data.slice(0, 5))),
+      api.get("/scans").then((r) => {
+        const all: Scan[] = r.data;
+        setTotalScans(all.length);
+        setScans(all.slice(0, 5));
+      }),
       api.get("/users/subscription").then((r) => setSubscription(r.data)),
+      api.get("/users/profile").then((r) => setFirstName(r.data.profile?.firstName ?? null)),
     ]).finally(() => setLoading(false));
   }, []);
 
   const scansUsed = subscription?.scansUsed ?? 0;
   const scansTotal = subscription?.plan?.scansPerMonth ?? 3;
   const planName = subscription?.plan?.displayName ?? "Free";
+  const greeting = firstName ?? user?.email?.split("@")[0] ?? "";
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">
-          Welcome back{user?.email ? `, ${user.email.split("@")[0]}` : ""}
+          Welcome back{greeting ? `, ${greeting}` : ""}
         </h1>
         <p className="text-muted-foreground mt-1">Here&apos;s your assessment overview.</p>
       </div>
@@ -61,7 +69,7 @@ export default function DashboardPage() {
             <FileText className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{scans.length}</div>
+            <div className="text-3xl font-bold">{loading ? "—" : totalScans}</div>
             <p className="text-xs text-muted-foreground mt-1">Lifetime assessments</p>
           </CardContent>
         </Card>
