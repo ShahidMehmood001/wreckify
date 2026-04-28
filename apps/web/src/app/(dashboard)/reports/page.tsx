@@ -12,14 +12,28 @@ import type { Report } from "@/types";
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   useEffect(() => {
     api.get("/reports").then((r) => setReports(r.data)).finally(() => setLoading(false));
   }, []);
 
-  function handleDownload(report: Report) {
-    const fileName = report.fileUrl.split("/").pop() || report.fileUrl.split("\\").pop();
-    window.open(`${process.env.NEXT_PUBLIC_API_URL}/reports/files/${fileName}`, "_blank");
+  async function handleDownload(report: Report) {
+    const fileName = report.fileUrl.split("/").pop() ?? "report.pdf";
+    setDownloading(report.id);
+    try {
+      const res = await api.get(`/reports/files/${fileName}`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Could not download report.");
+    } finally {
+      setDownloading(null);
+    }
   }
 
   return (
@@ -71,8 +85,9 @@ export default function ReportsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="capitalize">{report.type}</Badge>
-                    <Button size="sm" variant="outline" onClick={() => handleDownload(report)}>
-                      <Download className="w-3.5 h-3.5" /> Download
+                    <Button size="sm" variant="outline" onClick={() => handleDownload(report)} disabled={downloading === report.id}>
+                      {downloading === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                      Download
                     </Button>
                   </div>
                 </div>
