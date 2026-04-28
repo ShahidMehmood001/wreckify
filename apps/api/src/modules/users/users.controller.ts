@@ -31,6 +31,12 @@ export class UsersController {
     return this.usersService.getSubscription(userId);
   }
 
+  @Get('ai-config')
+  @ApiOperation({ summary: 'Get current AI provider config (key is never returned)' })
+  getAIConfig(@CurrentUser('id') userId: string) {
+    return this.usersService.getAIConfig(userId);
+  }
+
   @Patch('ai-config')
   @ApiOperation({ summary: 'Update BYOK AI provider config (Pro+ only)' })
   updateAIConfig(@CurrentUser('id') userId: string, @Body() dto: UpdateAIConfigDto) {

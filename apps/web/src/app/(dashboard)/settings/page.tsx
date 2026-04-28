@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, User, Key, CreditCard } from "lucide-react";
+import { Loader2, User, Key, CreditCard, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,17 +23,24 @@ const profileSchema = z.object({
 
 const aiSchema = z.object({
   provider: z.enum(["GEMINI", "OPENAI", "ZHIPU"]),
-  apiKey: z.string().min(1, "API Key required"),
+  apiKey: z.string().optional(),
   model: z.string().optional(),
 });
 
 type ProfileData = z.infer<typeof profileSchema>;
 type AIData = z.infer<typeof aiSchema>;
 
+interface AIConfig {
+  provider: "GEMINI" | "OPENAI" | "ZHIPU" | null;
+  model: string | null;
+  hasKey: boolean;
+}
+
 export default function SettingsPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingAI, setSavingAI] = useState(false);
+  const [aiConfig, setAiConfig] = useState<AIConfig | null>(null);
 
   const profileForm = useForm<ProfileData>({ resolver: zodResolver(profileSchema) });
   const aiForm = useForm<AIData>({
@@ -51,7 +58,18 @@ export default function SettingsPage() {
       });
     });
     api.get("/users/subscription").then((r) => setSubscription(r.data)).catch(() => {});
+    api.get("/users/ai-config").then((r) => setAiConfig(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (aiConfig) {
+      aiForm.reset({
+        provider: aiConfig.provider ?? "GEMINI",
+        model: aiConfig.model ?? "",
+        apiKey: "",
+      });
+    }
+  }, [aiConfig]);
 
   async function onProfileSubmit(data: ProfileData) {
     setSavingProfile(true);
@@ -70,6 +88,11 @@ export default function SettingsPage() {
     try {
       await api.patch("/users/ai-config", data);
       toast.success("AI configuration saved.");
+      setAiConfig((prev) => ({
+        provider: data.provider,
+        model: data.model ?? prev?.model ?? null,
+        hasKey: true,
+      }));
       aiForm.setValue("apiKey", "");
     } catch {
       toast.error("Failed to save AI config.");
@@ -77,6 +100,8 @@ export default function SettingsPage() {
       setSavingAI(false);
     }
   }
+
+  const isFreePlan = subscription?.plan?.name === "FREE";
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -161,45 +186,69 @@ export default function SettingsPage() {
       {/* AI Config (BYOK) */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Key className="w-5 h-5" /> AI Provider (BYOK)</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="w-5 h-5" />
+            Custom AI Provider
+            <span className="text-xs text-muted-foreground font-normal">(BYOK)</span>
+          </CardTitle>
           <CardDescription>
-            Bring your own API key for higher rate limits. Keys are encrypted with AES-256.
+            Connect your own AI account for higher rate limits and priority processing. Your key is encrypted and never shared.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={aiForm.handleSubmit(onAISubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Provider</Label>
-              <Select
-                value={aiForm.watch("provider")}
-                onValueChange={(v) => aiForm.setValue("provider", v as AIData["provider"])}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GEMINI">Google Gemini (Free tier available)</SelectItem>
-                  <SelectItem value="OPENAI">OpenAI GPT-4</SelectItem>
-                  <SelectItem value="ZHIPU">ZhipuAI GLM</SelectItem>
-                </SelectContent>
-              </Select>
+          {isFreePlan ? (
+            <div className="text-center py-8 space-y-3">
+              <Lock className="w-10 h-10 text-muted-foreground mx-auto" />
+              <p className="font-medium">Available on Pro and above</p>
+              <p className="text-sm text-muted-foreground">
+                Upgrade your plan to connect your own AI provider and get higher scan limits.
+              </p>
+              <Button variant="outline" size="sm" disabled>Upgrade Plan</Button>
             </div>
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <Input type="password" placeholder="Enter your API key" {...aiForm.register("apiKey")} />
-              {aiForm.formState.errors.apiKey && (
-                <p className="text-xs text-destructive">{aiForm.formState.errors.apiKey.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Model <span className="text-muted-foreground">(optional)</span></Label>
-              <Input placeholder="e.g. gemini-1.5-pro" {...aiForm.register("model")} />
-            </div>
-            <Button type="submit" disabled={savingAI}>
-              {savingAI && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save AI Config
-            </Button>
-          </form>
+          ) : (
+            <form onSubmit={aiForm.handleSubmit(onAISubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Provider</Label>
+                <Select
+                  value={aiForm.watch("provider")}
+                  onValueChange={(v) => aiForm.setValue("provider", v as AIData["provider"])}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GEMINI">Google Gemini (Free tier available)</SelectItem>
+                    <SelectItem value="OPENAI">OpenAI GPT-4</SelectItem>
+                    <SelectItem value="ZHIPU">ZhipuAI GLM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                {aiConfig?.hasKey && (
+                  <Badge className="bg-green-100 text-green-700 border-green-200 mb-1">
+                    API key configured ✓
+                  </Badge>
+                )}
+                <Label>{aiConfig?.hasKey ? "New API Key" : "API Key"}</Label>
+                <Input
+                  type="password"
+                  placeholder={aiConfig?.hasKey ? "Enter new key to replace existing" : "Enter your API key"}
+                  {...aiForm.register("apiKey")}
+                />
+                {aiForm.formState.errors.apiKey && (
+                  <p className="text-xs text-destructive">{aiForm.formState.errors.apiKey.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Model <span className="text-muted-foreground">(optional)</span></Label>
+                <Input placeholder="e.g. gemini-1.5-pro" {...aiForm.register("model")} />
+              </div>
+              <Button type="submit" disabled={savingAI}>
+                {savingAI && <Loader2 className="w-4 h-4 animate-spin" />}
+                Save AI Config
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

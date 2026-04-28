@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -45,6 +45,15 @@ export class UsersService {
     return subscription;
   }
 
+  async getAIConfig(userId: string) {
+    const config = await this.prisma.userAIConfig.findUnique({ where: { userId } });
+    return {
+      provider: config?.provider ?? null,
+      model: config?.model ?? null,
+      hasKey: !!config?.apiKeyHash,
+    };
+  }
+
   async updateAIConfig(userId: string, dto: UpdateAIConfigDto) {
     const subscription = await this.prisma.userSubscription.findUnique({
       where: { userId },
@@ -57,12 +66,29 @@ export class UsersService {
     }
 
     const encryptionKey = this.config.get<string>('encryptionKey') || '';
-    const encryptedKey = encrypt(dto.apiKey, encryptionKey);
 
-    return this.prisma.userAIConfig.upsert({
-      where: { userId },
-      update: { provider: dto.provider, model: dto.model, apiKeyHash: encryptedKey },
-      create: { userId, provider: dto.provider, model: dto.model, apiKeyHash: encryptedKey },
+    const updateData: any = { provider: dto.provider, model: dto.model };
+    if (dto.apiKey) {
+      updateData.apiKeyHash = encrypt(dto.apiKey, encryptionKey);
+    }
+
+    const existing = await this.prisma.userAIConfig.findUnique({ where: { userId } });
+
+    if (existing) {
+      return this.prisma.userAIConfig.update({
+        where: { userId },
+        data: updateData,
+        select: { id: true, provider: true, model: true, updatedAt: true },
+      });
+    }
+
+    // First time save — apiKey is required
+    if (!dto.apiKey) {
+      throw new BadRequestException('API key is required when saving for the first time');
+    }
+
+    return this.prisma.userAIConfig.create({
+      data: { userId, provider: dto.provider, model: dto.model, apiKeyHash: encrypt(dto.apiKey, encryptionKey) },
       select: { id: true, provider: true, model: true, updatedAt: true },
     });
   }

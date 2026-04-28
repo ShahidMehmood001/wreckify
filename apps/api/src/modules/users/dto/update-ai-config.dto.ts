@@ -7,9 +7,10 @@ export class UpdateAIConfigDto {
   @IsEnum(AIProvider)
   provider: AIProvider;
 
-  @ApiProperty({ example: 'sk-...' })
+  @ApiPropertyOptional({ example: 'sk-...' })
+  @IsOptional()
   @IsString()
-  apiKey: string;
+  apiKey?: string;
 
   @ApiPropertyOptional({ example: 'gemini-1.5-flash' })
   @IsOptional()
