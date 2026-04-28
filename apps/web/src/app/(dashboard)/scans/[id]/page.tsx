@@ -56,7 +56,7 @@ export default function ScanDetailPage() {
   function handleDownloadReport() {
     if (!scan?.report) return;
     const fileName = scan.report.fileUrl.split("/").pop();
-    window.open(`${process.env.NEXT_PUBLIC_API_URL}/reports/files/${fileName}`, "_blank");
+    window.open(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/files/${fileName}`, "_blank");
   }
 
   if (loading) {
