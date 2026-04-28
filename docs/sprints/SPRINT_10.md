@@ -109,16 +109,18 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 #### S10-007 — Workshop Inquiry Flow
 
 **Estimate:** 8 SP  
-**Status:** TODO
+**Status:** ✅ DONE  
+**Commit:** `87f35f7`
 
 **Acceptance criteria:**
-- [ ] `WorkshopInquiry` model added to Prisma schema with fields: `id`, `workshopId`, `userId`, `scanId?`, `message`, `createdAt`
-- [ ] `POST /workshops/:id/inquiries` — authenticated vehicle owner sends an inquiry; returns created inquiry
-- [ ] `GET /workshops/:id/inquiries` — workshop owner (or admin) retrieves incoming inquiries for their workshop
-- [ ] "Send Inquiry" button appears on workshop cards on the Workshops directory page
-- [ ] Clicking "Send Inquiry" opens a modal with a message field and optional scan selector
-- [ ] Success toast shown after inquiry submitted; button disabled while submitting
-- [ ] Workshop owner can view their inquiries on a dedicated page or within their dashboard
+- [x] `RepairInquiry` model already in Prisma schema (`repair_inquiries` table) with `id`, `workshopId`, `senderId`, `scanId?`, `message`, `status`, `createdAt`
+- [x] `POST /workshops/:id/inquiries` — OWNER role sends inquiry; already implemented in backend
+- [x] `GET /workshops/my/inquiries` — MECHANIC gets incoming inquiries for their workshop; already implemented
+- [x] "Send Inquiry" button on each workshop card, visible to OWNER role users only
+- [x] Dialog opens with optional scan selector (filtered to COMPLETED scans) and message textarea
+- [x] Success toast after submit; button shows "Sending…" and is disabled during request
+- [x] MECHANIC users see "Incoming Inquiries" section at top of workshops page with status badges and Close action
+- [x] Fixed `RespondInquiryDto.message` to be optional — closing an inquiry should not require a message
 
 ---
 
@@ -147,7 +149,7 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 | S10-004 | Dashboard: Fix Total Scans Stat | 1 SP | ✅ Done |
 | S10-005 | Dashboard: Greet by First Name | 1 SP | ✅ Done |
 | S10-006 | Admin Panel Audit | 5 SP | ✅ Done |
-| S10-007 | Workshop Inquiry Flow | 8 SP | TODO |
+| S10-007 | Workshop Inquiry Flow | 8 SP | ✅ Done |
 | S10-008 | Guest Scan Flow | 8 SP | TODO |
 | **Total** | | **30 SP** | |
 
@@ -180,16 +182,8 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 
 ---
 
-### S10-007 — Workshop Inquiry Flow
-**Status:** TODO  
-**Assignee:** Full Stack Developer  
-**Description:**  
-Per PRD section 6.9, vehicle owners should be able to send a repair inquiry to a workshop directly from a scan result. Currently the workshops page only displays listings — there is no inquiry button, no inquiry data model, and no backend endpoint.  
-**Scope:**
-- Add `WorkshopInquiry` model to Prisma schema
-- `POST /workshops/:id/inquiries` — owner sends inquiry (scan ID + message)
-- `GET /workshops/:id/inquiries` — workshop owner sees incoming inquiries
-- Frontend: "Send Inquiry" button on workshop card (visible after completing a scan)
+### S10-007 — Workshop Inquiry Flow ✅
+**Status:** DONE — `87f35f7`
 
 ---
 
