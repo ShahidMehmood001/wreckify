@@ -1,11 +1,11 @@
 "use client";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
 
-export default function AuthCallbackPage() {
+function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
@@ -35,10 +35,17 @@ export default function AuthCallbackPage() {
       });
   }, []);
 
+  return null;
+}
+
+export default function AuthCallbackPage() {
   return (
     <div className="flex flex-col items-center gap-3 py-8">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
       <p className="text-sm text-muted-foreground">Signing you in…</p>
+      <Suspense>
+        <CallbackHandler />
+      </Suspense>
     </div>
   );
 }
