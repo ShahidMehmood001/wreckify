@@ -117,7 +117,7 @@ export default function ScanDetailPage() {
               {scan.images.map((img) => (
                 <img
                   key={img.id}
-                  src={`${process.env.NEXT_PUBLIC_API_URL}/${img.url}`}
+                  src={img.url}
                   alt="Vehicle"
                   className="w-full h-24 object-cover rounded-lg border"
                 />

@@ -216,14 +216,14 @@ export default function NewScanPage() {
               Damage Detected
             </CardTitle>
             <CardDescription>
-              {scan.detectedParts.length} damaged part{scan.detectedParts.length !== 1 ? "s" : ""} identified
+              {(scan.detectedParts ?? []).length} damaged part{(scan.detectedParts ?? []).length !== 1 ? "s" : ""} identified
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {scan.detectedParts.length === 0 ? (
+            {(scan.detectedParts ?? []).length === 0 ? (
               <p className="text-muted-foreground text-center py-4">No damage detected in the uploaded images.</p>
             ) : (
-              scan.detectedParts.map((part) => (
+              (scan.detectedParts ?? []).map((part) => (
                 <div key={part.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium capitalize">{part.partName.replace(/_/g, " ")}</p>
