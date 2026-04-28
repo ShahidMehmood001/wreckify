@@ -255,6 +255,18 @@ Sprint-specific requirements:
 
 ---
 
+## Post-Sprint Bugs (found during A10-1 smoke test)
+
+These bugs were found after the sprint was closed, during Docker smoke testing. They were raised, approved, and fixed before Sprint 11 began.
+
+| ID | Description | Root Cause | Fix | Commit |
+|----|-------------|------------|-----|--------|
+| BUG-018 | ADMIN user lands on owner scan dashboard after login — irrelevant scan stats, "New Scan" CTA | No role-based redirect on `/dashboard`; all authenticated users went to the same page | Added `user.role === "ADMIN"` check in dashboard `useEffect` that redirects to `/admin` | `0636da7` |
+| BUG-019 | Unlimited plans (Pro, Workshop, Insurance, Enterprise) show `-1 scans/month` and `0/-1` in dashboard and settings | DB uses `-1` as sentinel for unlimited; UI rendered it raw | Added `unlimited = scansTotal === -1` flag; replaced raw values with "Unlimited" / "Unlimited scans/month"; hidden progress bar for unlimited plans | `0636da7` |
+| BUG-020 | Role dropdown in admin user list is transparent — text unreadable against page background | `popover` colour token missing from `tailwind.config.ts`; `bg-popover` and `text-popover-foreground` generated no CSS, leaving `SelectContent` background transparent | Added `popover` and `popover.foreground` to Tailwind theme colours | `TBD` |
+
+---
+
 ## Notes for Developers
 
 - All API responses are wrapped: `{ success: true, data: {...} }` — the axios interceptor in `apps/web/src/lib/api.ts` unwraps them automatically
