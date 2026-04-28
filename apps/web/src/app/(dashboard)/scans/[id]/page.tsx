@@ -53,10 +53,20 @@ export default function ScanDetailPage() {
     }
   }
 
-  function handleDownloadReport() {
+  async function handleDownloadReport() {
     if (!scan?.report) return;
-    const fileName = scan.report.fileUrl.split("/").pop();
-    window.open(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/files/${fileName}`, "_blank");
+    const fileName = scan.report.fileUrl.split("/").pop() ?? "report.pdf";
+    try {
+      const res = await api.get(`/reports/files/${fileName}`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Could not download report.");
+    }
   }
 
   if (loading) {
