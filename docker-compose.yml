@@ -45,6 +45,7 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-wreckify_aes_key_32_chars_padded}
       APP_URL: ${APP_URL:-http://localhost:3001}
       APP_INTERNAL_URL: ${APP_INTERNAL_URL:-http://api:3001}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
     volumes:
       - api_uploads:/app/uploads
