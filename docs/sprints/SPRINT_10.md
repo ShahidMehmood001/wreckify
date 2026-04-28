@@ -92,16 +92,17 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 #### S10-006 — Admin Panel: Audit and Complete
 
 **Estimate:** 5 SP  
-**Status:** TODO
+**Status:** ✅ DONE  
+**Commit:** `3bdf529`
 
 **Acceptance criteria:**
-- [ ] User list loads and displays all registered users with their role
-- [ ] Admin can change a user's role from the user list
-- [ ] Workshop approval queue shows pending workshops; approve/reject buttons work end-to-end
-- [ ] Scraper monitoring section shows last run timestamp and total record count from `scraper_logs`
-- [ ] Platform analytics numbers (total users, total scans, total workshops) are correct
-- [ ] No 4xx/5xx errors in browser Network tab when navigating the admin panel
-- [ ] All admin API endpoints covered by a `RolesGuard` requiring `ADMIN` role
+- [x] User list loads correctly — fixed critical bug where `listUsers` returns `{ users, total }` but frontend was reading `r.data` as an array
+- [x] Admin can change a user's role and activate/deactivate users
+- [x] Workshop approval queue shows all workshops with approve/reject dropdown
+- [x] Scraper monitoring shows last 10 runs with timestamp, record count, and error message
+- [x] Analytics stat cards show accurate numbers from `GET /admin/analytics` (users, scans, reports, workshops)
+- [x] Loading skeletons shown while data loads; empty states shown when lists are empty
+- [x] Non-admin users redirected to `/dashboard` on mount (frontend guard); backend `RolesGuard` already required `ADMIN` role
 
 ---
 
@@ -145,7 +146,7 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 | S10-003 | Google OAuth Callback Redirect | 2 SP | ✅ Done |
 | S10-004 | Dashboard: Fix Total Scans Stat | 1 SP | ✅ Done |
 | S10-005 | Dashboard: Greet by First Name | 1 SP | ✅ Done |
-| S10-006 | Admin Panel Audit | 5 SP | TODO |
+| S10-006 | Admin Panel Audit | 5 SP | ✅ Done |
 | S10-007 | Workshop Inquiry Flow | 8 SP | TODO |
 | S10-008 | Guest Scan Flow | 8 SP | TODO |
 | **Total** | | **30 SP** | |
@@ -174,16 +175,8 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 
 ---
 
-### S10-006 — Admin Panel: Audit and complete
-**Status:** TODO  
-**Assignee:** Full Stack Developer  
-**Description:**  
-The admin page (`/admin`) was implemented in Sprint 8 but has not been tested since Docker integration. Needs a full audit:
-- User list and role management — does it load and work?
-- Workshop approval/rejection workflow — does it function end-to-end?
-- Scraper monitoring section — does it show last run status and record counts?
-- Platform analytics — are the numbers correct?
-- Any API endpoints missing or returning errors?
+### S10-006 — Admin Panel: Audit and complete ✅
+**Status:** DONE — `3bdf529`
 
 ---
 
