@@ -43,6 +43,11 @@ services:
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_INTERNAL_KEY: ${AI_SERVICE_INTERNAL_KEY:-wreckify_internal_key_change_me}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-wreckify_aes_key_32_chars_padded}
+      APP_URL: ${APP_URL:-http://localhost:3001}
+      APP_INTERNAL_URL: ${APP_INTERNAL_URL:-http://api:3001}
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    volumes:
+      - api_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,3 +120,4 @@ volumes:
   postgres_data:
   ai_weights:
   ai_generated:
+  api_uploads:

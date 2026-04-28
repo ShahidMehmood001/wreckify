@@ -28,8 +28,8 @@ export function generateReportHtml(data: ReportData): string {
           (item) => `
       <tr>
         <td>${item.part.replace(/_/g, ' ')}</td>
-        <td>PKR ${Number(item.parts_min).toLocaleString()} – ${Number(item.parts_max).toLocaleString()}</td>
-        <td>PKR ${Number(item.labor_min).toLocaleString()} – ${Number(item.labor_max).toLocaleString()}</td>
+        <td>PKR ${Number(item.partsMin).toLocaleString()} – ${Number(item.partsMax).toLocaleString()}</td>
+        <td>PKR ${Number(item.laborMin).toLocaleString()} – ${Number(item.laborMax).toLocaleString()}</td>
       </tr>`,
         )
         .join('')
