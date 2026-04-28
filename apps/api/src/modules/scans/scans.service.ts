@@ -180,6 +180,74 @@ export class ScansService {
     return this.getScanOrThrow(scanId, userId);
   }
 
+  async addImagesGuest(scanId: string, guestSessionId: string, files: Express.Multer.File[]) {
+    const scan = await this.getGuestScanOrThrow(scanId, guestSessionId);
+
+    if (scan.images.length + files.length > 5) {
+      throw new BadRequestException('Maximum 5 images allowed per scan');
+    }
+
+    const baseUrl = process.env.APP_URL || 'http://localhost:3001';
+
+    await this.prisma.scanImage.createMany({
+      data: files.map((file, i) => ({
+        scanId,
+        url: `${baseUrl}/uploads/${file.filename}`,
+        order: scan.images.length + i,
+      })),
+    });
+
+    return this.prisma.scan.findUnique({
+      where: { id: scanId },
+      include: { images: { orderBy: { order: 'asc' } } },
+    });
+  }
+
+  async triggerDetectionGuest(scanId: string, guestSessionId: string) {
+    const scan = await this.getGuestScanOrThrow(scanId, guestSessionId);
+
+    if (!scan.images.length) {
+      throw new BadRequestException('Upload at least one image before running detection');
+    }
+
+    await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.PROCESSING } });
+
+    try {
+      const internalBaseUrl = process.env.APP_INTERNAL_URL || 'http://api:3001';
+      const imageUrls = scan.images.map((img) =>
+        img.url.replace(/^https?:\/\/[^/]+/, internalBaseUrl),
+      );
+
+      const result = await this.aiClient.detect({
+        scan_id: scanId,
+        image_urls: imageUrls,
+        provider: AIProvider.GEMINI,
+        api_key: undefined,
+      });
+
+      await this.prisma.detectedPart.createMany({
+        data: result.detected_parts.map((p: any) => ({
+          scanId,
+          partName: p.part_name,
+          severity: p.severity,
+          confidenceScore: p.confidence_score,
+          boundingBox: p.bounding_box,
+          description: p.description,
+        })),
+      });
+
+      await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.COMPLETED } });
+
+      return this.prisma.scan.findUnique({
+        where: { id: scanId },
+        include: { images: { orderBy: { order: 'asc' } }, detectedParts: true },
+      });
+    } catch (err) {
+      await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.FAILED } });
+      throw err;
+    }
+  }
+
   async findAll(userId: string) {
     return this.prisma.scan.findMany({
       where: { userId },
@@ -210,6 +278,19 @@ export class ScansService {
     }
 
     return { provider: defaultProvider as string, apiKey: undefined };
+  }
+
+  private async getGuestScanOrThrow(scanId: string, guestSessionId: string) {
+    const scan = await this.prisma.scan.findUnique({
+      where: { id: scanId },
+      include: {
+        images: { orderBy: { order: 'asc' } },
+        detectedParts: true,
+      },
+    });
+    if (!scan || !scan.isGuest) throw new NotFoundException('Guest scan not found');
+    if (scan.guestSessionId !== guestSessionId) throw new ForbiddenException();
+    return scan;
   }
 
   private async getScanOrThrow(scanId: string, userId: string) {

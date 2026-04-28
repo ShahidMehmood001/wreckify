@@ -31,6 +31,60 @@ export class ScansController {
     return this.scansService.create(userId, dto);
   }
 
+  @Public()
+  @Post(':id/images/guest')
+  @ApiOperation({ summary: 'Upload images for a guest scan (no auth, guestSessionId required)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        guestSessionId: { type: 'string' },
+        images: { type: 'array', items: { type: 'string', format: 'binary' } },
+      },
+    },
+  })
+  @UseInterceptors(
+    FilesInterceptor('images', 5, {
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (_req, file, cb) => {
+          const ext = extname(file.originalname);
+          cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+        },
+      }),
+      fileFilter: (_req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          cb(new BadRequestException('Only image files are allowed'), false);
+        } else {
+          cb(null, true);
+        }
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  addImagesGuest(
+    @Param('id') id: string,
+    @Body('guestSessionId') guestSessionId: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    const safeFiles = files ?? [];
+    if (safeFiles.length === 0) throw new BadRequestException('At least one image is required');
+    if (!guestSessionId) throw new BadRequestException('guestSessionId is required');
+    return this.scansService.addImagesGuest(id, guestSessionId, safeFiles);
+  }
+
+  @Public()
+  @Post(':id/detect/guest')
+  @ApiOperation({ summary: 'Trigger AI detection for a guest scan' })
+  detectGuest(
+    @Param('id') id: string,
+    @Body('guestSessionId') guestSessionId: string,
+  ) {
+    if (!guestSessionId) throw new BadRequestException('guestSessionId is required');
+    return this.scansService.triggerDetectionGuest(id, guestSessionId);
+  }
+
   @Post(':id/images')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
