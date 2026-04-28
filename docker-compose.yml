@@ -48,6 +48,7 @@ services:
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
     volumes:
       - api_uploads:/app/uploads
+      - api_reports:/app/generated-reports
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,3 +122,4 @@ volumes:
   ai_weights:
   ai_generated:
   api_uploads:
+  api_reports:
