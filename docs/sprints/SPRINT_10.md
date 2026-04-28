@@ -13,6 +13,143 @@ Complete the remaining PRD MVP features (admin panel, workshop inquiry flow, gue
 
 ---
 
+## Sprint Planning
+
+**Team capacity:** 1 developer  
+**Carry-over from Sprint 9 action items:** A9-2 (document env vars) and A9-3 (update DoD) to be addressed during this sprint
+
+### Story Estimates & Acceptance Criteria
+
+#### S10-001 — Custom AI Provider Settings UX ✅ DONE
+
+**Estimate:** 3 SP  
+**Commit:** `f554a70`
+
+**Acceptance criteria:**
+- [x] FREE plan users see a locked card with an upgrade message — no API key form shown
+- [x] PRO+ users see a form pre-filled with their saved `provider` and `model` from `GET /users/ai-config`
+- [x] `apiKey` field shows a "API key configured ✓" badge if `hasKey: true`; otherwise shows a placeholder input
+- [x] `PATCH /users/ai-config` accepts `apiKey` as optional — omitting it does not clear the stored key
+- [x] `GET /users/ai-config` endpoint exists and returns `{ provider, model, hasKey }` without exposing the raw key
+- [x] Section heading uses plain-English label ("Custom AI Provider"), not the acronym "BYOK"
+
+---
+
+#### S10-002 — Profile View / Edit Mode ✅ DONE
+
+**Estimate:** 2 SP  
+**Commit:** `b7f8f59`
+
+**Acceptance criteria:**
+- [x] Profile section shows read-only values (`firstName`, `lastName`, `phone`) by default
+- [x] "Edit" button switches to an editable form
+- [x] "Cancel" discards unsaved changes and reverts to last saved values
+- [x] "Save" calls `PATCH /users/profile` and shows a success toast
+- [x] Form is pre-filled from `GET /users/profile` on mount (reads `data.profile.firstName`, not `data.firstName`)
+
+---
+
+#### S10-003 — Google OAuth Callback Redirect ✅ DONE
+
+**Estimate:** 2 SP  
+**Commit:** `9c0970a`
+
+**Acceptance criteria:**
+- [x] After Google consent, browser lands on `/callback?accessToken=...&refreshToken=...`, not a JSON response
+- [x] `/callback` page stores tokens in `localStorage`, calls `GET /auth/me`, stores user in Zustand, redirects to `/dashboard`
+- [x] If tokens are missing or `/auth/me` fails, `/callback` redirects to `/login`
+- [x] No `useSearchParams()` hydration error — component wrapped in `<Suspense>`
+
+---
+
+#### S10-004 — Dashboard: Fix Total Scans Stat Card
+
+**Estimate:** 1 SP  
+**Status:** TODO
+
+**Acceptance criteria:**
+- [ ] "Total Scans" card shows `subscription.scansUsed` (monthly count) — not `scans.length` which is capped at 5
+- [ ] The number displayed matches what the API reports for the current billing period
+- [ ] No additional network request required if `subscription` is already loaded on the dashboard
+
+---
+
+#### S10-005 — Dashboard: Greet User by First Name
+
+**Estimate:** 1 SP  
+**Status:** TODO
+
+**Acceptance criteria:**
+- [ ] Dashboard greeting shows `profile.firstName` when available
+- [ ] Falls back to `user.email.split("@")[0]` if `firstName` is not set
+- [ ] First name is loaded via `GET /users/profile` on dashboard mount — not assumed to be in the Zustand `user` object
+- [ ] No visible flash of email-derived name before first name loads (show nothing or a skeleton)
+
+---
+
+#### S10-006 — Admin Panel: Audit and Complete
+
+**Estimate:** 5 SP  
+**Status:** TODO
+
+**Acceptance criteria:**
+- [ ] User list loads and displays all registered users with their role
+- [ ] Admin can change a user's role from the user list
+- [ ] Workshop approval queue shows pending workshops; approve/reject buttons work end-to-end
+- [ ] Scraper monitoring section shows last run timestamp and total record count from `scraper_logs`
+- [ ] Platform analytics numbers (total users, total scans, total workshops) are correct
+- [ ] No 4xx/5xx errors in browser Network tab when navigating the admin panel
+- [ ] All admin API endpoints covered by a `RolesGuard` requiring `ADMIN` role
+
+---
+
+#### S10-007 — Workshop Inquiry Flow
+
+**Estimate:** 8 SP  
+**Status:** TODO
+
+**Acceptance criteria:**
+- [ ] `WorkshopInquiry` model added to Prisma schema with fields: `id`, `workshopId`, `userId`, `scanId?`, `message`, `createdAt`
+- [ ] `POST /workshops/:id/inquiries` — authenticated vehicle owner sends an inquiry; returns created inquiry
+- [ ] `GET /workshops/:id/inquiries` — workshop owner (or admin) retrieves incoming inquiries for their workshop
+- [ ] "Send Inquiry" button appears on workshop cards on the Workshops directory page
+- [ ] Clicking "Send Inquiry" opens a modal with a message field and optional scan selector
+- [ ] Success toast shown after inquiry submitted; button disabled while submitting
+- [ ] Workshop owner can view their inquiries on a dedicated page or within their dashboard
+
+---
+
+#### S10-008 — Guest Scan Flow on Landing Page
+
+**Estimate:** 8 SP  
+**Status:** TODO
+
+**Acceptance criteria:**
+- [ ] A `guestSessionId` (UUID) is generated and persisted in `localStorage` on first visit to `/`
+- [ ] Landing page upload form calls `POST /scans/guest`, then `POST /scans/:id/images`, then `POST /scans/:id/detect` in sequence
+- [ ] Scan results (detected parts + cost estimate) are displayed inline on the landing page without navigating away
+- [ ] After results, a prompt appears: "Register to save your report and get 3 free scans/month"
+- [ ] If the guest has already used their 1 free scan (same `guestSessionId`), show a message and prompt to register
+- [ ] No authenticated-only API calls are made — guest endpoints only
+
+---
+
+### Sprint Commitment Summary
+
+| ID | Story | Estimate | Status |
+|----|-------|----------|--------|
+| S10-001 | Custom AI Provider Settings UX | 3 SP | ✅ Done |
+| S10-002 | Profile View / Edit Mode | 2 SP | ✅ Done |
+| S10-003 | Google OAuth Callback Redirect | 2 SP | ✅ Done |
+| S10-004 | Dashboard: Fix Total Scans Stat | 1 SP | TODO |
+| S10-005 | Dashboard: Greet by First Name | 1 SP | TODO |
+| S10-006 | Admin Panel Audit | 5 SP | TODO |
+| S10-007 | Workshop Inquiry Flow | 8 SP | TODO |
+| S10-008 | Guest Scan Flow | 8 SP | TODO |
+| **Total** | | **30 SP** | |
+
+---
+
 ## Stories Completed
 
 | ID | Story | Description | Commit |
@@ -84,6 +221,9 @@ Per PRD section 4.1 and 6, guests should be able to run 1 free scan per session 
 
 ## Definition of Done (Sprint 10)
 
+See [`docs/DEFINITION_OF_DONE.md`](../DEFINITION_OF_DONE.md) for the full project-wide checklist.
+
+Sprint-specific requirements:
 - [ ] All "In Progress / Planned" stories above are completed and tested
 - [ ] No console errors on any page in Docker production build
 - [ ] Admin panel fully functional for all three admin roles (user management, workshop approval, scraper health)
@@ -99,3 +239,4 @@ Per PRD section 4.1 and 6, guests should be able to run 1 free scan per session 
 - Docker volumes: `api_uploads` (images), `api_reports` (PDFs), `postgres_data`, `ai_weights`
 - Run `docker-compose up --build` to rebuild all services; use `--no-cache` if source changes are not picked up
 - See `docs/sprints/SPRINT_09.md` for the full list of environment variables and their purpose
+- See `docs/DEFINITION_OF_DONE.md` for the full Definition of Done checklist
