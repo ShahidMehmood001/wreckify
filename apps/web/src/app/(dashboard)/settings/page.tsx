@@ -137,15 +137,19 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Scans This Month</span>
               <span className="text-sm text-muted-foreground">
-                {subscription.scansUsed} / {subscription.plan.scansPerMonth}
+                {subscription.plan.scansPerMonth === -1
+                  ? `${subscription.scansUsed} (Unlimited)`
+                  : `${subscription.scansUsed} / ${subscription.plan.scansPerMonth}`}
               </span>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{ width: `${Math.min((subscription.scansUsed / subscription.plan.scansPerMonth) * 100, 100)}%` }}
-              />
-            </div>
+            {subscription.plan.scansPerMonth !== -1 && (
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: `${Math.min((subscription.scansUsed / subscription.plan.scansPerMonth) * 100, 100)}%` }}
+                />
+              </div>
+            )}
             {subscription.plan.name === "FREE" && (
               <p className="text-xs text-muted-foreground">
                 Upgrade to PRO for unlimited scans and priority AI processing.

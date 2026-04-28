@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ScanLine, Car, FileText, Zap, ArrowRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import type { Scan, Subscription } from "@/types";
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [scans, setScans] = useState<Scan[]>([]);
   const [totalScans, setTotalScans] = useState(0);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -19,6 +21,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (user?.role === "ADMIN") {
+      router.replace("/admin");
+      return;
+    }
     Promise.all([
       api.get("/scans").then((r) => {
         const all: Scan[] = r.data;
@@ -32,6 +38,7 @@ export default function DashboardPage() {
 
   const scansUsed = subscription?.scansUsed ?? 0;
   const scansTotal = subscription?.plan?.scansPerMonth ?? 3;
+  const unlimited = scansTotal === -1;
   const planName = subscription?.plan?.displayName ?? "Free";
   const greeting = firstName ?? user?.email?.split("@")[0] ?? "";
 
@@ -52,13 +59,17 @@ export default function DashboardPage() {
             <ScanLine className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{scansUsed}<span className="text-muted-foreground text-lg font-normal">/{scansTotal}</span></div>
-            <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all"
-                style={{ width: `${Math.min((scansUsed / scansTotal) * 100, 100)}%` }}
-              />
+            <div className="text-3xl font-bold">
+              {unlimited ? "Unlimited" : <>{scansUsed}<span className="text-muted-foreground text-lg font-normal">/{scansTotal}</span></>}
             </div>
+            {!unlimited && (
+              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${Math.min((scansUsed / scansTotal) * 100, 100)}%` }}
+                />
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">This month · {planName} plan</p>
           </CardContent>
         </Card>
@@ -81,7 +92,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{planName}</div>
-            <p className="text-xs text-muted-foreground mt-1">{scansTotal} scans/month</p>
+            <p className="text-xs text-muted-foreground mt-1">{unlimited ? "Unlimited scans/month" : `${scansTotal} scans/month`}</p>
           </CardContent>
         </Card>
       </div>
