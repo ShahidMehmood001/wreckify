@@ -1,4 +1,5 @@
-import { PrismaClient, PlanName } from '@prisma/client';
+import { PrismaClient, PlanName, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -63,6 +64,41 @@ const laborCosts = [
   { partName: 'roof',         city: 'Lahore',    laborMin: 5000, laborMax: 12000 },
 ];
 
+const testUsers = [
+  {
+    email: 'admin@wreckify.com',
+    password: 'Admin123!',
+    role: UserRole.ADMIN,
+    firstName: 'Admin',
+    lastName: 'User',
+    planName: PlanName.ENTERPRISE,
+  },
+  {
+    email: 'owner@wreckify.com',
+    password: 'Owner123!',
+    role: UserRole.OWNER,
+    firstName: 'Test',
+    lastName: 'Owner',
+    planName: PlanName.FREE,
+  },
+  {
+    email: 'pro@wreckify.com',
+    password: 'Pro123!',
+    role: UserRole.OWNER,
+    firstName: 'Pro',
+    lastName: 'User',
+    planName: PlanName.PRO,
+  },
+  {
+    email: 'mechanic@wreckify.com',
+    password: 'Mechanic123!',
+    role: UserRole.MECHANIC,
+    firstName: 'Test',
+    lastName: 'Mechanic',
+    planName: PlanName.WORKSHOP,
+  },
+];
+
 async function main() {
   console.log('Seeding plans...');
   for (const plan of plans) {
@@ -80,6 +116,36 @@ async function main() {
       update: {},
       create: { ...cost, currency: 'PKR' },
     });
+  }
+
+  console.log('Seeding test users...');
+  for (const u of testUsers) {
+    const passwordHash = await bcrypt.hash(u.password, 10);
+    const plan = await prisma.plan.findUnique({ where: { name: u.planName } });
+
+    const user = await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: {
+        email: u.email,
+        password: passwordHash,
+        role: u.role,
+        profile: {
+          create: { firstName: u.firstName, lastName: u.lastName },
+        },
+        subscription: plan
+          ? {
+              create: {
+                planId: plan.id,
+                scansUsed: 0,
+                resetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              },
+            }
+          : undefined,
+      },
+    });
+
+    console.log(`  ${u.role.padEnd(14)} ${user.email}  /  ${u.password}`);
   }
 
   console.log('Seed complete.');
