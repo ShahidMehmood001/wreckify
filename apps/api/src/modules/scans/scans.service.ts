@@ -65,18 +65,19 @@ export class ScansService {
     return scan;
   }
 
-  async addImages(scanId: string, userId: string, images: { url: string; angle?: string }[]) {
+  async addImages(scanId: string, userId: string, files: Express.Multer.File[]) {
     const scan = await this.getScanOrThrow(scanId, userId);
 
-    if (scan.images.length + images.length > 5) {
+    if (scan.images.length + files.length > 5) {
       throw new BadRequestException('Maximum 5 images allowed per scan');
     }
 
+    const baseUrl = process.env.APP_URL || 'http://localhost:3001';
+
     await this.prisma.scanImage.createMany({
-      data: images.map((img, i) => ({
+      data: files.map((file, i) => ({
         scanId,
-        url: img.url,
-        angle: img.angle,
+        url: `${baseUrl}/uploads/${file.filename}`,
         order: scan.images.length + i,
       })),
     });
@@ -99,9 +100,14 @@ export class ScansService {
     try {
       const { provider, apiKey } = await this.resolveAiConfig(userId, scan.aiProvider);
 
+      const internalBaseUrl = process.env.APP_INTERNAL_URL || 'http://api:3001';
+      const imageUrls = scan.images.map((img) =>
+        img.url.replace(/^https?:\/\/[^/]+/, internalBaseUrl),
+      );
+
       const result = await this.aiClient.detect({
         scan_id: scanId,
-        image_urls: scan.images.map((i) => i.url),
+        image_urls: imageUrls,
         provider,
         api_key: apiKey,
       });
@@ -132,7 +138,7 @@ export class ScansService {
       throw new BadRequestException('Run damage detection before requesting a cost estimate');
     }
 
-    if (scan.costEstimate) return scan.costEstimate;
+    if (scan.costEstimate) return this.getScanOrThrow(scanId, userId);
 
     const { provider, apiKey } = await this.resolveAiConfig(userId, scan.aiProvider);
 
@@ -155,16 +161,23 @@ export class ScansService {
       city: userProfile?.city || 'Lahore',
     });
 
-    return this.prisma.costEstimate.create({
+    await this.prisma.costEstimate.create({
       data: {
         scanId,
         totalMin: result.total_min,
         totalMax: result.total_max,
         currency: result.currency,
-        lineItems: result.line_items,
+        lineItems: result.line_items.map((item: any) => ({
+          part: item.part,
+          partsMin: item.parts_min,
+          partsMax: item.parts_max,
+          laborMin: item.labor_min,
+          laborMax: item.labor_max,
+        })),
         narrative: result.narrative,
       },
     });
+    return this.getScanOrThrow(scanId, userId);
   }
 
   async findAll(userId: string) {

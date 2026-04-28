@@ -1,5 +1,8 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, UseGuards, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { ScansService } from './scans.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { CreateGuestScanDto } from './dto/create-guest-scan.dto';
@@ -31,13 +34,46 @@ export class ScansController {
   @Post(':id/images')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Add image URLs to a scan (max 5)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        images: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Upload images for a scan (max 5, multipart/form-data)' })
+  @UseInterceptors(
+    FilesInterceptor('images', 5, {
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (_req, file, cb) => {
+          const ext = extname(file.originalname);
+          cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+        },
+      }),
+      fileFilter: (_req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          cb(new BadRequestException('Only image files are allowed'), false);
+        } else {
+          cb(null, true);
+        }
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
   addImages(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
-    @Body() body: { images: { url: string; angle?: string }[] },
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.scansService.addImages(id, userId, body.images);
+    const safeFiles = files ?? [];
+    if (safeFiles.length === 0) throw new BadRequestException('At least one image is required');
+    return this.scansService.addImages(id, userId, safeFiles);
   }
 
   @Get()
