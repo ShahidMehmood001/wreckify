@@ -8,8 +8,9 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
+import { RegisterWorkshopDto } from './dto/register-workshop.dto';
 import { LoginDto } from './dto/login.dto';
-import { UserRole, PlanName } from '@prisma/client';
+import { UserRole, PlanName, WorkshopStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { addMonths } from '../../common/utils/date.util';
 
@@ -53,6 +54,52 @@ export class AuthService {
     });
 
     const tokens = await this.generateTokens(user.id, user.email, user.role, PlanName.FREE);
+    return { user, ...tokens };
+  }
+
+  async registerWorkshop(dto: RegisterWorkshopDto) {
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existing) throw new ConflictException('Email already registered');
+
+    const hashed = await bcrypt.hash(dto.password, 12);
+
+    const workshopPlan = await this.prisma.plan.findUnique({ where: { name: PlanName.WORKSHOP } });
+    if (!workshopPlan) throw new BadRequestException('Plan configuration missing. Run db:seed first.');
+
+    const [user] = await this.prisma.$transaction([
+      this.prisma.user.create({
+        data: {
+          email: dto.email,
+          password: hashed,
+          role: UserRole.MECHANIC,
+          profile: {
+            create: {
+              firstName: dto.firstName,
+              lastName: dto.lastName,
+            },
+          },
+          subscription: {
+            create: {
+              planId: workshopPlan.id,
+              scansUsed: 0,
+              resetAt: addMonths(new Date(), 1),
+            },
+          },
+          workshop: {
+            create: {
+              name: dto.workshopName,
+              city: dto.city,
+              address: dto.address,
+              phone: dto.phone,
+              status: WorkshopStatus.PENDING,
+            },
+          },
+        },
+        select: { id: true, email: true, role: true },
+      }),
+    ]);
+
+    const tokens = await this.generateTokens(user.id, user.email, user.role, PlanName.WORKSHOP);
     return { user, ...tokens };
   }
 

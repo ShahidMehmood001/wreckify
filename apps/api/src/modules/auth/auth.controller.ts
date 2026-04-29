@@ -10,11 +10,12 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiCreatedResponse, ApiBody } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
+import { RegisterWorkshopDto } from './dto/register-workshop.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -34,6 +35,15 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Public()
+  @Post('register/workshop')
+  @ApiOperation({ summary: 'Register a workshop owner — creates MECHANIC user + PENDING workshop atomically' })
+  @ApiBody({ type: RegisterWorkshopDto })
+  @ApiCreatedResponse({ description: 'Workshop owner registered; returns user and tokens' })
+  registerWorkshop(@Body() dto: RegisterWorkshopDto) {
+    return this.authService.registerWorkshop(dto);
   }
 
   @Public()
