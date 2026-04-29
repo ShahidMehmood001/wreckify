@@ -1,8 +1,10 @@
 # Sprint 12 — Admin Panel: Dedicated Management Pages
 
-**Status:** PLANNED  
+**Status:** CLOSED ✅  
 **Start date:** 2026-04-29  
 **Target end date:** 2026-04-29  
+**Actual end date:** 2026-04-29  
+**Velocity:** 18 SP (7 stories delivered)  
 **Sprint type:** Feature — Admin UX improvement
 
 ---
@@ -156,13 +158,13 @@ Split the admin panel into purpose-specific pages:
 
 | ID | Story | Estimate | Status |
 |----|-------|----------|--------|
-| S12-001 | Admin Dashboard Cleanup | 2 SP | ⬜ Planned |
-| S12-002 | Expand AdminSidebar Navigation | 1 SP | ⬜ Planned |
-| S12-003 | Backend: Pagination for Workshops & Scraper | 2 SP | ⬜ Planned |
-| S12-004 | Shared Pagination Component | 1 SP | ⬜ Planned |
-| S12-005 | Admin Users Page | 5 SP | ⬜ Planned |
-| S12-006 | Admin Workshops Page | 4 SP | ⬜ Planned |
-| S12-007 | Admin Scraper Logs Page | 3 SP | ⬜ Planned |
+| S12-001 | Admin Dashboard Cleanup | 2 SP | ✅ Done · `188f420` |
+| S12-002 | Expand AdminSidebar Navigation | 1 SP | ✅ Done · `79fbbc7` |
+| S12-003 | Backend: Pagination for Workshops & Scraper | 2 SP | ✅ Done · `79fbbc7` |
+| S12-004 | Shared Pagination Component | 1 SP | ✅ Done · `79fbbc7` |
+| S12-005 | Admin Users Page | 5 SP | ✅ Done · `c632994` |
+| S12-006 | Admin Workshops Page | 4 SP | ✅ Done · `4459566` |
+| S12-007 | Admin Scraper Logs Page | 3 SP | ✅ Done · `4ae7164` |
 | **Total** | | **18 SP** | |
 
 ---
@@ -172,11 +174,49 @@ Split the admin panel into purpose-specific pages:
 See [`docs/DEFINITION_OF_DONE.md`](../DEFINITION_OF_DONE.md) for the full project-wide checklist.
 
 Sprint-specific requirements:
-- [ ] `/admin` page fetches only what the overview needs — no full dataset loads
-- [ ] All three management pages paginate correctly — navigating to page 2 loads the next set from the API
-- [ ] `/admin/workshops?filter=PENDING` deep-link from the dashboard pending widget opens the workshops page pre-filtered to Pending tab
-- [ ] No management tables remain on the `/admin` dashboard page
-- [ ] `PaginationControls` component is reused across users, workshops, and scraper pages
+- [x] `/admin` page fetches only what the overview needs — no full dataset loads
+- [x] All three management pages paginate correctly — navigating to page 2 loads the next set from the API
+- [x] `/admin/workshops?filter=PENDING` deep-link from the dashboard pending widget opens the workshops page pre-filtered to Pending tab
+- [x] No management tables remain on the `/admin` dashboard page
+- [x] `PaginationControls` component is reused across users, workshops, and scraper pages
+
+## Sprint Review
+
+**Date:** 2026-04-29
+**Attendees:** Shahid Awan (Developer / Product Owner)
+
+**Sprint goal:** Move management tables to dedicated pages with server-side pagination, scope dashboard to overview only.
+**Result:** ✅ Goal met — all 7 stories delivered, 18 SP.
+
+### Demo checklist
+
+- [x] `/admin` — loads fast, only 4 small API calls; no management tables
+- [x] `/admin` — pending approvals widget shows max 5, "View all pending →" link appears when more exist
+- [x] `/admin/users` — paginated list, search filters current page, role/status inline controls work
+- [x] `/admin/workshops` — filter tabs update URL, deep-link `?filter=PENDING` pre-selects tab, inline status control works
+- [x] `/admin/scraper` — paginated log history, All/Success/Failed tabs, error messages highlighted
+- [x] AdminSidebar — all 5 nav items present and highlight correctly on active route
+- [x] `PaginationControls` renders null when total fits on one page (no unnecessary pagination UI)
+
+## Sprint Retrospective
+
+### What Went Well
+
+- Backend already had pagination for users; workshops and scraper needed one extra service method change each — minimal backend work
+- The limit=6 trick for the pending approvals widget avoided an extra count API call
+- `PaginationControls` as a shared stateless component kept all three management pages clean
+- Deep-linkable workshops filter via URL query params required `Suspense` wrapping — caught and handled correctly
+
+### What Went Wrong
+
+- None
+
+### Action Items
+
+| # | Action | Owner | Target Sprint |
+|---|--------|-------|---------------|
+| A12-1 | Docker smoke test all admin pages: pagination, filters, inline controls | Shahid Awan | Before Sprint 13 |
+| A12-2 | Carry-over: E2E smoke tests for each role home page (from A11-2) | Shahid Awan | Sprint 13 |
 
 ---
 
