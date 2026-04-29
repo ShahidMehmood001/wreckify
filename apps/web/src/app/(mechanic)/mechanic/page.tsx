@@ -4,7 +4,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   MessageSquare, Building2, CheckCircle2, Clock,
-  ArrowRight, Inbox,
+  ArrowRight, Inbox, AlertTriangle, Info, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,72 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Workshop, RepairInquiry } from "@/types";
+
+function WorkshopBanner({ loading, workshop }: { loading: boolean; workshop: Workshop | null | false }) {
+  if (loading) {
+    return <div className="h-14 bg-muted rounded-lg animate-pulse" />;
+  }
+  if (workshop === false) {
+    return (
+      <div className="flex items-start gap-3 rounded-lg border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20 px-4 py-3">
+        <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">No workshop registered</p>
+          <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-0.5">
+            You haven&apos;t linked a workshop to your account yet.{" "}
+            <Link href="/register/workshop" className="underline font-medium">
+              Register your workshop →
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (!workshop || workshop.status === "APPROVED") return null;
+  if (workshop.status === "PENDING") {
+    return (
+      <div className="flex items-start gap-3 rounded-lg border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950/20 px-4 py-3">
+        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Workshop pending approval</p>
+          <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
+            Your workshop <span className="font-medium">{workshop.name}</span> is under review. You&apos;ll be able to receive inquiries once approved.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (workshop.status === "REJECTED") {
+    return (
+      <div className="flex items-start gap-3 rounded-lg border-l-4 border-destructive bg-destructive/5 px-4 py-3">
+        <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-destructive">Workshop registration rejected</p>
+          <p className="text-sm text-destructive/80 mt-0.5">
+            Your workshop registration was not approved. Please contact support or{" "}
+            <Link href="/register/workshop" className="underline font-medium">
+              register a new workshop →
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (workshop.status === "SUSPENDED") {
+    return (
+      <div className="flex items-start gap-3 rounded-lg border-l-4 border-destructive bg-destructive/5 px-4 py-3">
+        <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-destructive">Workshop suspended</p>
+          <p className="text-sm text-destructive/80 mt-0.5">
+            Your workshop has been suspended. Please contact support for assistance.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   PENDING: "secondary",
@@ -63,6 +129,9 @@ export default function MechanicDashboardPage() {
         </h1>
         <p className="text-muted-foreground mt-1">Here&apos;s your workshop overview.</p>
       </div>
+
+      {/* Workshop status banner */}
+      <WorkshopBanner loading={loading} workshop={workshop} />
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
