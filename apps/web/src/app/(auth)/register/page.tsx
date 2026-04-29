@@ -23,6 +23,12 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+function roleHome(role: string) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "MECHANIC") return "/mechanic";
+  return "/dashboard";
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
@@ -38,7 +44,7 @@ export default function RegisterPage() {
       const res = await api.post("/auth/register", data);
       setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       toast.success("Account created! Welcome to Wreckify.");
-      router.push("/dashboard");
+      router.push(roleHome(res.data.user.role));
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg || "Registration failed. Please try again.");

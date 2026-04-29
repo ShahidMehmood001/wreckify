@@ -34,7 +34,7 @@ export class AuthService {
       data: {
         email: dto.email,
         password: hashed,
-        role: dto.role || UserRole.OWNER,
+        role: UserRole.OWNER,
         profile: {
           create: {
             firstName: dto.firstName,
