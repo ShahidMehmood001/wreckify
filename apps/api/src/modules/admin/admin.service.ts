@@ -36,16 +36,23 @@ export class AdminService {
     return this.prisma.user.update({ where: { id: userId }, data: { isActive } });
   }
 
-  async listWorkshops(status?: WorkshopStatus) {
-    return this.prisma.workshop.findMany({
-      where: status ? { status } : undefined,
-      include: {
-        user: { select: { email: true, profile: { select: { firstName: true, lastName: true } } } },
-        services: true,
-        _count: { select: { inquiries: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async listWorkshops(page = 1, limit = 20, status?: WorkshopStatus) {
+    const skip = (page - 1) * limit;
+    const [workshops, total] = await Promise.all([
+      this.prisma.workshop.findMany({
+        where: status ? { status } : undefined,
+        include: {
+          user: { select: { email: true, profile: { select: { firstName: true, lastName: true } } } },
+          services: true,
+          _count: { select: { inquiries: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.workshop.count({ where: status ? { status } : undefined }),
+    ]);
+    return { workshops, total, page, limit };
   }
 
   async setWorkshopStatus(workshopId: string, status: WorkshopStatus) {
@@ -54,11 +61,17 @@ export class AdminService {
     return this.prisma.workshop.update({ where: { id: workshopId }, data: { status } });
   }
 
-  async getScraperLogs(limit = 50) {
-    return this.prisma.scraperLog.findMany({
-      orderBy: { startedAt: 'desc' },
-      take: limit,
-    });
+  async getScraperLogs(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [logs, total] = await Promise.all([
+      this.prisma.scraperLog.findMany({
+        orderBy: { startedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.scraperLog.count(),
+    ]);
+    return { logs, total, page, limit };
   }
 
   async getAnalytics() {

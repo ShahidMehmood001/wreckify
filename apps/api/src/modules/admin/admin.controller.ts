@@ -50,9 +50,15 @@ export class AdminController {
 
   @Get('workshops')
   @ApiOperation({ summary: 'List all workshops' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'status', enum: WorkshopStatus, required: false })
-  listWorkshops(@Query('status') status?: WorkshopStatus) {
-    return this.adminService.listWorkshops(status);
+  listWorkshops(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('status') status?: WorkshopStatus,
+  ) {
+    return this.adminService.listWorkshops(Number(page), Number(limit), status);
   }
 
   @Patch('workshops/:id/status')
@@ -63,8 +69,10 @@ export class AdminController {
 
   @Get('scraper/logs')
   @ApiOperation({ summary: 'View scraper run logs' })
-  getScraperLogs() {
-    return this.adminService.getScraperLogs();
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  getScraperLogs(@Query('page') page = 1, @Query('limit') limit = 20) {
+    return this.adminService.getScraperLogs(Number(page), Number(limit));
   }
 
   @Get('analytics')

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Settings, LogOut, Zap, Shield } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, Zap, Shield, Users, Building2, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,9 @@ import { api } from "@/lib/api";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/users", label: "Users", icon: Users, exact: false },
+  { href: "/admin/workshops", label: "Workshops", icon: Building2, exact: false },
+  { href: "/admin/scraper", label: "Scraper", icon: Activity, exact: false },
   { href: "/admin/settings", label: "Settings", icon: Settings, exact: false },
 ];
 
