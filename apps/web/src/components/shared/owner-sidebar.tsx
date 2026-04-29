@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Car, ScanLine, FileText, Settings,
-  Building2, LogOut, Shield, Zap,
+  Building2, LogOut, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
@@ -19,11 +19,7 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-const adminItems = [
-  { href: "/admin", label: "Admin Panel", icon: Shield },
-];
-
-export function Sidebar() {
+export function OwnerSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
@@ -60,26 +56,6 @@ export function Sidebar() {
             {label}
           </Link>
         ))}
-
-        {user?.role === "ADMIN" && (
-          <div className="pt-4 border-t mt-4">
-            {adminItems.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                  pathname.startsWith(href)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            ))}
-          </div>
-        )}
       </nav>
 
       <div className="p-4 border-t">
@@ -89,7 +65,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{user?.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">{user?.role?.toLowerCase()}</p>
+            <p className="text-xs text-muted-foreground">Vehicle Owner</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={handleLogout}>

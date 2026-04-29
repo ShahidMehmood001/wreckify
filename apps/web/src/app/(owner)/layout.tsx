@@ -2,15 +2,17 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
-import { Sidebar } from "@/components/shared/sidebar";
+import { OwnerSidebar } from "@/components/shared/owner-sidebar";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, _hasHydrated } = useAuthStore();
+export default function OwnerLayout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user, _hasHydrated } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (_hasHydrated && !isAuthenticated) router.replace("/login");
-  }, [isAuthenticated, _hasHydrated, router]);
+    if (!_hasHydrated) return;
+    if (!isAuthenticated) { router.replace("/login"); return; }
+    if (user?.role !== "OWNER") router.replace("/login");
+  }, [isAuthenticated, user, _hasHydrated, router]);
 
   if (!_hasHydrated) {
     return (
@@ -20,11 +22,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || user?.role !== "OWNER") return null;
 
   return (
     <div className="flex min-h-screen bg-muted/20">
-      <Sidebar />
+      <OwnerSidebar />
       <main className="ml-64 flex-1 p-8">{children}</main>
     </div>
   );
