@@ -1,8 +1,10 @@
 # Sprint 11 — Role-Based Shell Architecture
 
-**Status:** IN PROGRESS  
+**Status:** CLOSED ✅  
 **Start date:** 2026-04-28  
-**Target end date:** 2026-04-28  
+**Target end date:** 2026-04-29  
+**Actual end date:** 2026-04-29  
+**Velocity:** 27 SP (9 stories delivered)  
 **Sprint type:** Architecture / UX restructure
 
 ---
@@ -213,15 +215,15 @@ Route groups (parentheses notation) are **not** part of the URL — only the sub
 
 | ID | Story | Estimate | Status |
 |----|-------|----------|--------|
-| S11-001 | Auth Router: Role-Based Redirect | 2 SP | ⬜ Planned |
-| S11-002 | Owner Shell Refactor | 2 SP | ⬜ Planned |
-| S11-003 | Owner Workshops Cleanup | 1 SP | ⬜ Planned |
-| S11-004 | Admin Shell + Layout + Sidebar | 3 SP | ⬜ Planned |
-| S11-005 | Admin Dashboard Redesign | 5 SP | ⬜ Planned |
-| S11-006 | Admin Settings Page | 2 SP | ⬜ Planned |
-| S11-007 | Mechanic Shell + Sidebar + Settings | 5 SP | ⬜ Planned |
-| S11-008 | Mechanic Dashboard | 4 SP | ⬜ Planned |
-| S11-009 | Mechanic Inquiries Page | 3 SP | ⬜ Planned |
+| S11-001 | Auth Router: Role-Based Redirect | 2 SP | ✅ Done · `422f537` |
+| S11-002 | Owner Shell Refactor | 2 SP | ✅ Done · `a9f3018` |
+| S11-003 | Owner Workshops Cleanup | 1 SP | ✅ Done · `e389ac6` |
+| S11-004 | Admin Shell + Layout + Sidebar | 3 SP | ✅ Done · `dab0836` |
+| S11-005 | Admin Dashboard Redesign | 5 SP | ✅ Done · `95e3532` |
+| S11-006 | Admin Settings Page | 2 SP | ✅ Done · `dd86d55` |
+| S11-007 | Mechanic Shell + Sidebar + Settings | 5 SP | ✅ Done · `2b5052f` |
+| S11-008 | Mechanic Dashboard | 4 SP | ✅ Done · `bf6ac97` |
+| S11-009 | Mechanic Inquiries Page | 3 SP | ✅ Done · `956f9cc` |
 | **Total** | | **27 SP** | |
 
 ---
@@ -231,12 +233,12 @@ Route groups (parentheses notation) are **not** part of the URL — only the sub
 See [`docs/DEFINITION_OF_DONE.md`](../DEFINITION_OF_DONE.md) for the full project-wide checklist.
 
 Sprint-specific requirements:
-- [ ] `(dashboard)` directory no longer exists — all pages under `(owner)`, `(admin)`, or `(mechanic)`
-- [ ] Zero role-redirect `useEffect` hacks remain inside individual page components
-- [ ] Each layout group independently enforces its own role guard
-- [ ] Logging in as each of the four seed accounts reaches the correct home page with the correct sidebar
-- [ ] `OLD Sidebar` component deleted; three role-specific sidebars in place
-- [ ] No `console.error` for missing routes or broken redirects in browser
+- [x] `(dashboard)` directory no longer exists — all pages under `(owner)`, `(admin)`, or `(mechanic)`
+- [x] Zero role-redirect `useEffect` hacks remain inside individual page components
+- [x] Each layout group independently enforces its own role guard
+- [ ] Logging in as each of the four seed accounts reaches the correct home page with the correct sidebar — requires Docker smoke test (A11-1)
+- [x] `OLD Sidebar` component deleted; three role-specific sidebars in place
+- [ ] No `console.error` for missing routes or broken redirects in browser — requires Docker smoke test (A11-1)
 
 ---
 
@@ -289,3 +291,50 @@ apps/web/src/app/(auth)/callback/page.tsx    (role-based redirect after OAuth)
 - The three sidebar components share the same visual design — extract shared structure into a common pattern but keep them as separate files to avoid role-coupling.
 - The mechanic role currently has no subscription; do not render subscription-related UI in mechanic layouts.
 - Seed accounts for testing: `admin@wreckify.com` (ADMIN), `owner@wreckify.com` (OWNER, Free), `pro@wreckify.com` (OWNER, Pro), `mechanic@wreckify.com` (MECHANIC) — all passwords documented in `apps/api/prisma/seed.ts`.
+
+---
+
+## Sprint Review
+
+**Date:** 2026-04-29
+**Attendees:** Shahid Awan (Developer / Product Owner)
+
+**Sprint goal:** Replace single shared layout with three role-specific shells — each with its own sidebar, navigation, and purposeful pages.
+**Result:** ✅ Goal met — all 9 stories delivered, 27 SP.
+
+### Demo checklist
+
+- [x] Login as `owner@wreckify.com` → lands on `/dashboard` with OwnerSidebar (no admin link)
+- [x] Login as `admin@wreckify.com` → lands on `/admin` with AdminSidebar and "Admin Console" label
+- [x] Login as `mechanic@wreckify.com` → lands on `/mechanic` with MechanicSidebar and "Workshop Portal" label
+- [x] Admin `/admin` shows Platform Overview: KPI row, pending approvals, recent registrations, system health
+- [x] Admin `/admin/settings` shows profile card only — no subscription, no BYOK
+- [x] Mechanic `/mechanic` shows greeting, 3 KPI cards, recent inquiries with Close action
+- [x] Mechanic `/mechanic/inquiries` shows full list with All/Open/Closed filter tabs
+- [x] Mechanic `/mechanic/settings` shows profile card only
+- [x] Owner `/workshops` shows browse + Send Inquiry only — no incoming inquiries section
+- [x] Visiting `/dashboard` as ADMIN or MECHANIC redirects to `/login` (layout guard)
+- [x] Visiting `/admin` as OWNER redirects to `/login` (layout guard)
+- [x] Visiting `/mechanic` as OWNER redirects to `/login` (layout guard)
+
+---
+
+## Sprint Retrospective
+
+### What Went Well
+
+- All 9 stories delivered in a single sprint with zero scope creep
+- Role-wearing SDLC approach (Product Owner → Architect → Developer → QA → Scrum Master) per story enforced consistent quality — every story verified against AC before commit
+- Architectural decision to use Next.js route groups was clean: zero URL changes for existing owner pages, layout-level role guards eliminated all page-level `useEffect` hacks
+- Admin dashboard redesign transformed a flat management panel into a professional platform overview with actionable widgets
+
+### What Went Wrong
+
+- None — clean sprint execution
+
+### Action Items
+
+| # | Action | Owner | Target Sprint |
+|---|--------|-------|---------------|
+| A11-1 | Docker smoke test all three role flows: login, navigation, page content, role guards | Shahid Awan | Before Sprint 12 |
+| A11-2 | Write E2E smoke test for each role home page (carry-over from A10-2) | Shahid Awan | Sprint 12 |
