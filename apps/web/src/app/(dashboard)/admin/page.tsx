@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Users, Building2, Activity, Shield, ScanLine, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
-import { useAuthStore } from "@/store/auth.store";
 import { formatDate } from "@/lib/utils";
 
 interface AdminUser {
@@ -46,8 +44,6 @@ interface Analytics {
 }
 
 export default function AdminPage() {
-  const { user } = useAuthStore();
-  const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [workshops, setWorkshops] = useState<AdminWorkshop[]>([]);
   const [scraperLogs, setScraperLogs] = useState<ScraperLog[]>([]);
@@ -55,10 +51,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && user.role !== "ADMIN") {
-      router.replace("/dashboard");
-      return;
-    }
     Promise.all([
       api.get("/admin/users").then((r) => setUsers(r.data.users ?? r.data)),
       api.get("/admin/workshops").then((r) => setWorkshops(r.data)),

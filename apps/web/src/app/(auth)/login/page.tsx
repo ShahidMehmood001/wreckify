@@ -30,13 +30,19 @@ export default function LoginPage() {
     resolver: zodResolver(schema),
   });
 
+  function roleHome(role: string) {
+    if (role === "ADMIN") return "/admin";
+    if (role === "MECHANIC") return "/mechanic";
+    return "/dashboard";
+  }
+
   async function onSubmit(data: FormData) {
     setLoading(true);
     try {
       const res = await api.post("/auth/login", data);
       setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       toast.success("Welcome back!");
-      router.push("/dashboard");
+      router.push(roleHome(res.data.user.role));
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg || "Login failed. Please check your credentials.");

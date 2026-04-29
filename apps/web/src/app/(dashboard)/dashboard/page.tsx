@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ScanLine, Car, FileText, Zap, ArrowRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import type { Scan, Subscription } from "@/types";
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
-  const router = useRouter();
   const [scans, setScans] = useState<Scan[]>([]);
   const [totalScans, setTotalScans] = useState(0);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -21,10 +19,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.role === "ADMIN") {
-      router.replace("/admin");
-      return;
-    }
     Promise.all([
       api.get("/scans").then((r) => {
         const all: Scan[] = r.data;

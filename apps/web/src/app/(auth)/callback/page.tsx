@@ -22,11 +22,17 @@ function CallbackHandler() {
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
 
+    function roleHome(role: string) {
+      if (role === "ADMIN") return "/admin";
+      if (role === "MECHANIC") return "/mechanic";
+      return "/dashboard";
+    }
+
     api
       .get("/auth/me")
       .then((res) => {
         setAuth(res.data, accessToken, refreshToken);
-        router.replace("/dashboard");
+        router.replace(roleHome(res.data.role));
       })
       .catch(() => {
         localStorage.removeItem("accessToken");
