@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { WorkshopsService } from './workshops.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
 import { CreateInquiryDto } from './dto/create-inquiry.dto';
 import { RespondInquiryDto } from './dto/respond-inquiry.dto';
+import { UpdateWorkshopServicesDto } from './dto/update-workshop-services.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -33,6 +34,16 @@ export class WorkshopsController {
     return this.workshopsService.findOne(id);
   }
 
+  @Get('my')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.MECHANIC)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get own workshop profile (Mechanic only)' })
+  @ApiOkResponse({ description: 'Returns the authenticated mechanic\'s workshop' })
+  getMyWorkshop(@CurrentUser('id') userId: string) {
+    return this.workshopsService.findMyWorkshop(userId);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MECHANIC)
@@ -42,13 +53,26 @@ export class WorkshopsController {
     return this.workshopsService.register(userId, dto);
   }
 
-  @Patch()
+  @Patch('my')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MECHANIC)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update own workshop (Mechanic only)' })
+  @ApiOperation({ summary: 'Update own workshop profile (Mechanic only)' })
+  @ApiBody({ type: UpdateWorkshopDto })
+  @ApiOkResponse({ description: 'Returns the updated workshop' })
   update(@CurrentUser('id') userId: string, @Body() dto: UpdateWorkshopDto) {
     return this.workshopsService.update(userId, dto);
+  }
+
+  @Put('my/services')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.MECHANIC)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Replace workshop services list (Mechanic only)' })
+  @ApiBody({ type: UpdateWorkshopServicesDto })
+  @ApiOkResponse({ description: 'Returns workshop with updated services' })
+  updateServices(@CurrentUser('id') userId: string, @Body() dto: UpdateWorkshopServicesDto) {
+    return this.workshopsService.updateServices(userId, dto.services);
   }
 
   @Post(':id/inquiries')

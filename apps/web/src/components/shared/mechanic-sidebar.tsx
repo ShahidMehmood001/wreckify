@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, MessageSquare, Settings, LogOut, Zap, Wrench } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Settings, LogOut, Zap, Wrench, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 const navItems = [
   { href: "/mechanic", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/mechanic/inquiries", label: "Inquiries", icon: MessageSquare, exact: false },
+  { href: "/mechanic/profile", label: "Workshop Profile", icon: Building2, exact: false },
   { href: "/mechanic/settings", label: "Settings", icon: Settings, exact: false },
 ];
 

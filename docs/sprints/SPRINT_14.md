@@ -134,46 +134,46 @@ OLX is **disabled** in the scheduler. The spider code is preserved in `apps/scra
 #### S14-001 — Backend: PATCH /workshops/my endpoint
 
 **Estimate:** 3 SP  
-**Status:** 🔲 Not started
+**Status:** ✅ Done
 
 **Acceptance criteria:**
-- [ ] `PATCH /workshops/my` endpoint added to `WorkshopsController`
-- [ ] Requires `MECHANIC` role (JWT guard + role guard)
-- [ ] Accepts a `UpdateWorkshopDto` with all fields optional: `name`, `city`, `address`, `phone`
-- [ ] Returns the updated workshop object
-- [ ] If the authenticated user has no workshop, returns 404
-- [ ] Swagger documented with `@ApiBody`, `@ApiOkResponse`
+- [x] `PATCH /workshops/my` endpoint added to `WorkshopsController`
+- [x] Requires `MECHANIC` role (JWT guard + role guard)
+- [x] Accepts a `UpdateWorkshopDto` with all fields optional: `name`, `city`, `address`, `phone`
+- [x] Returns the updated workshop object
+- [x] If the authenticated user has no workshop, returns 404
+- [x] Swagger documented with `@ApiBody`, `@ApiOkResponse`
 
 ---
 
 #### S14-002 — Backend: Workshop Services Management
 
 **Estimate:** 2 SP  
-**Status:** 🔲 Not started
+**Status:** ✅ Done
 
 **Acceptance criteria:**
-- [ ] `PUT /workshops/my/services` endpoint replaces the workshop's full services list
-- [ ] Accepts `{ services: string[] }` — replaces existing services, not appends
-- [ ] Services are stored in `WorkshopService` table linked to the workshop
-- [ ] Returns the updated list of services
-- [ ] Requires `MECHANIC` role
+- [x] `PUT /workshops/my/services` endpoint replaces the workshop's full services list
+- [x] Accepts `{ services: string[] }` — replaces existing services, not appends
+- [x] Services are stored in `WorkshopService` table linked to the workshop
+- [x] Returns the updated list of services
+- [x] Requires `MECHANIC` role
 
 ---
 
 #### S14-003 — Frontend: Workshop Profile Edit Page
 
 **Estimate:** 5 SP  
-**Status:** 🔲 Not started
+**Status:** ✅ Done
 
 **Acceptance criteria:**
-- [ ] New page at `/mechanic/profile` — "Edit Workshop Profile"
-- [ ] Pre-populated form with current workshop data fetched from `GET /workshops/my`
-- [ ] Fields: Workshop Name, City, Address, Phone
-- [ ] Services section: add/remove service tags (e.g. "Engine Repair", "Body Work", "Painting")
-- [ ] Save button calls `PATCH /workshops/my` — shows success toast on save
-- [ ] Link to this page from the mechanic dashboard (e.g. "Edit Profile" button in header or sidebar)
-- [ ] Validation: name and city required; address and phone optional
-- [ ] Loading state while fetching existing data
+- [x] New page at `/mechanic/profile` — "Edit Workshop Profile"
+- [x] Pre-populated form with current workshop data fetched from `GET /workshops/my`
+- [x] Fields: Workshop Name, City, Address, Phone
+- [x] Services section: add/remove service tags (e.g. "Engine Repair", "Body Work", "Painting")
+- [x] Save button calls `PATCH /workshops/my` — shows success toast on save
+- [x] Link to this page from the mechanic dashboard (e.g. "Edit Profile" button in header or sidebar)
+- [x] Validation: name and city required; address and phone optional
+- [x] Loading state while fetching existing data
 
 ---
 
@@ -181,7 +181,7 @@ OLX is **disabled** in the scheduler. The spider code is preserved in `apps/scra
 
 | ID | Story | Estimate | Status |
 |----|-------|----------|--------|
-| S14-001 | Backend: PATCH /workshops/my | 3 SP | 🔲 Not started |
-| S14-002 | Backend: Workshop Services Management | 2 SP | 🔲 Not started |
-| S14-003 | Frontend: Workshop Profile Edit Page | 5 SP | 🔲 Not started |
+| S14-001 | Backend: PATCH /workshops/my | 3 SP | ✅ Done |
+| S14-002 | Backend: Workshop Services Management | 2 SP | ✅ Done |
+| S14-003 | Frontend: Workshop Profile Edit Page | 5 SP | ✅ Done |
 | **Total** | | **10 SP** | |

@@ -41,6 +41,27 @@ export class WorkshopsService {
     return workshop;
   }
 
+  async findMyWorkshop(userId: string) {
+    const workshop = await this.prisma.workshop.findUnique({
+      where: { userId },
+      include: { services: true },
+    });
+    if (!workshop) throw new NotFoundException('Workshop not found');
+    return workshop;
+  }
+
+  async updateServices(userId: string, services: string[]) {
+    const workshop = await this.prisma.workshop.findUnique({ where: { userId } });
+    if (!workshop) throw new NotFoundException('Workshop not found');
+
+    await this.prisma.workshopService.deleteMany({ where: { workshopId: workshop.id } });
+    return this.prisma.workshop.update({
+      where: { id: workshop.id },
+      data: { services: { create: services.map((name) => ({ name })) } },
+      include: { services: true },
+    });
+  }
+
   async register(userId: string, dto: CreateWorkshopDto) {
     const existing = await this.prisma.workshop.findUnique({ where: { userId } });
     if (existing) throw new ConflictException('You already have a registered workshop');
