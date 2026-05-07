@@ -1,8 +1,8 @@
 # Wreckify — Product Requirements Document (PRD)
 
-**Version:** 1.0  
-**Status:** Draft  
-**Last Updated:** 2026-04-17  
+**Version:** 1.1  
+**Status:** Active  
+**Last Updated:** 2026-05-07  
 
 ---
 
@@ -19,7 +19,6 @@ The vehicle repair industry in Pakistan suffers from:
 - Opaque, variable spare parts pricing
 - No centralized, trusted source for repair cost benchmarks
 - Difficulty finding qualified, trustworthy mechanics
-- Insurance claim processes that lack standardized damage documentation
 
 ---
 
@@ -30,7 +29,7 @@ The vehicle repair industry in Pakistan suffers from:
 | Accurate damage detection | ≥85% mAP on test dataset |
 | Cost estimation relevance | Prices sourced from OLX/PakWheels, refreshed every 12 hours |
 | Report quality | Downloadable PDF with structured damage + cost breakdown |
-| Multi-role platform | Vehicle owners, mechanics, insurance agents all served |
+| Multi-role platform | Vehicle owners and mechanics served (v1) |
 | Extensibility | Freemium architecture designed for future payment integration |
 
 ---
@@ -52,7 +51,10 @@ The vehicle repair industry in Pakistan suffers from:
 - Receives repair inquiries from vehicle owners
 - Manages incoming jobs and responds to requests
 
-### 4.4 Insurance Agent
+### 4.4 Insurance Agent *(Optional — Phase 2+)*
+
+> **Decision (2026-05-07):** Insurance penetration in Pakistan is very low — most vehicle owners do not hold comprehensive insurance policies. Building an insurance agent role at launch adds complexity without a meaningful addressable user base. This role is **deferred to Phase 2** and will be revisited once the core Owner + Workshop marketplace has traction.
+
 - Registers as an insurance professional
 - Accesses insurance-format damage reports submitted by vehicle owners
 - Generates standardized claim documentation
@@ -71,7 +73,7 @@ The vehicle repair industry in Pakistan suffers from:
 | **Free** | 3 | Basic PDF | No (Gemini default) | No | Guest → Owner |
 | **Pro** | Unlimited | Full PDF | Yes | Yes | Vehicle Owner |
 | **Workshop** | Unlimited | Full PDF | Yes | Yes | Mechanic |
-| **Insurance** | Unlimited | Insurance PDF | Yes | Yes | Insurance Agent |
+| **Insurance** | Unlimited | Insurance PDF | Yes | Yes | *(Phase 2 — Insurance Agent)* |
 | **Enterprise** | Unlimited + API | Custom | Yes | Yes | Future |
 
 > **Note:** Payment gateway integration is out of scope for v1. Plans are modeled in the database and enforced via feature flags. Upgrade prompts are shown but no actual payment is processed.
@@ -82,7 +84,7 @@ The vehicle repair industry in Pakistan suffers from:
 
 ### 6.1 Authentication & Authorization
 - Email/password registration and login (NextAuth.js)
-- Role-based access control (RBAC): Guest, Owner, Mechanic, Insurance, Admin
+- Role-based access control (RBAC): Guest, Owner, Mechanic, Admin *(Insurance Agent deferred to Phase 2)*
 - OAuth login (Google) — extensible for more providers
 - JWT-based session management
 
@@ -130,7 +132,6 @@ The vehicle repair industry in Pakistan suffers from:
   - Market price range per part
   - AI-generated repair narrative
   - Wreckify branding + timestamp
-- Insurance agents get an alternate insurance-format PDF template
 
 ### 6.8 Repair History Dashboard
 - Vehicle owners see all past scans per vehicle
@@ -157,6 +158,7 @@ The vehicle repair industry in Pakistan suffers from:
 
 | Feature | Description |
 |---------|-------------|
+| **Insurance Agent role** | Registration, insurance-format PDF template, claim documentation — deferred (low insurance penetration in Pakistan) |
 | Price trend charts | Historical spare parts price visualization per part/make/model |
 | WhatsApp/email report sharing | Share PDF directly from scan result |
 | Insurance claim submission | Submit report directly to integrated insurance providers |
@@ -207,11 +209,6 @@ The vehicle repair industry in Pakistan suffers from:
 - As a workshop owner, I can view and respond to repair inquiries from vehicle owners
 - As a workshop owner, I can manage my workshop profile and availability
 
-### Insurance Agent
-- As an insurance agent, I can register with my company details
-- As an insurance agent, I can access insurance-format damage reports
-- As an insurance agent, I can generate standardized claim documentation PDFs
-
 ### Admin
 - As an admin, I can view and manage all registered users
 - As an admin, I can approve or reject workshop registrations
@@ -248,7 +245,7 @@ The vehicle repair industry in Pakistan suffers from:
 
 | Question | Answer |
 |----------|--------|
-| User roles | Owner, Mechanic, Insurance Agent, Admin |
+| User roles | Owner, Mechanic, Admin (v1); Insurance Agent deferred to Phase 2 |
 | Guest access | 1 free scan, prompted to register |
 | Monetization v1 | Freemium model, plans in DB, no payment gateway yet |
 | Scraping approach | Scheduled cron → save to DB, serve from cache |
