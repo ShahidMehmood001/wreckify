@@ -72,35 +72,47 @@ class PakWheelsSpider(scrapy.Spider):
 
         scraped = 0
         for card in cards:
-            # Title: text lives in h3 a but may have whitespace-only leading nodes; join all
-            title = " ".join(
-                card.css("h3 a::text, h3 a *::text").getall()
-            ).strip() or " ".join(
-                card.css(".search-title-bar a::text, .search-title-bar a *::text").getall()
-            ).strip()
+            # Extract text nodes — diagnostic confirmed title and prices are in here
+            all_texts = [t.strip() for t in card.css("*::text").getall() if t.strip()]
 
-            # Price: sale price in strong.generic-white; original/strikethrough in span.discount-strike
-            sale_price_text = card.css("strong.generic-white::text").get("").strip()
-            orig_price_text = card.css("span.discount-strike::text").get("").strip()
+            # Title is the first long text after the "See N photo(s)" group
+            title = ""
+            try:
+                see_idx = next(i for i, t in enumerate(all_texts) if t == "See")
+                candidate = all_texts[see_idx + 3] if see_idx + 3 < len(all_texts) else ""
+                if len(candidate) > 5:
+                    title = candidate
+            except StopIteration:
+                pass
 
-            url = card.css("a::attr(href)").get("") or ""
-
-            if not title or not sale_price_text:
+            if not title:
                 continue
+
+            # Listing ID lives on the li element — use it to find the product page URL
+            listing_id = card.attrib.get("data-listing-id", "")
+            url = (
+                card.css(f"a[href*='/{listing_id}/']::attr(href)").get("") if listing_id
+                else card.css("a[href*='/accessories-spare-parts/']::attr(href)").get("") or ""
+            )
 
             part_name = map_part_name(title)
             if not part_name:
                 continue
 
-            # For discounted items: min=sale price, max=original price (real market range)
-            # For non-discounted: parse_price_pkr gives ±20% range around the single price
-            if sale_price_text and orig_price_text:
-                sale = parse_price_pkr(sale_price_text)
-                orig = parse_price_pkr(orig_price_text)
-                prices = (sale[0], orig[1]) if sale and orig else parse_price_pkr(sale_price_text)
-            else:
-                prices = parse_price_pkr(sale_price_text)
+            # All PKR prices in the card — deduplicated; min=sale/only, max=original if discounted
+            pkr_texts = [t for t in all_texts if t.startswith("PKR ")]
+            try:
+                pkr_vals = sorted(set(
+                    float(t.replace("PKR", "").replace(",", "").strip())
+                    for t in pkr_texts
+                ))
+            except (ValueError, AttributeError):
+                pkr_vals = []
 
+            if not pkr_vals:
+                continue
+
+            prices = (pkr_vals[0], pkr_vals[-1]) if len(pkr_vals) >= 2 else parse_price_pkr(pkr_texts[0])
             if not prices:
                 continue
 
