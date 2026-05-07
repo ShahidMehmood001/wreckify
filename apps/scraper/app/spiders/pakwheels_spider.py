@@ -70,38 +70,37 @@ class PakWheelsSpider(scrapy.Spider):
             )
             return
 
-        # Diagnostic: log all text nodes from first card to identify title/price selectors
-        texts = [t.strip() for t in cards[0].css("*::text").getall() if t.strip()]
-        self.logger.warning(f"[pakwheels] Card texts: {texts[:30]}")
-
         scraped = 0
         for card in cards:
-            title = (
-                card.css("h2 a::text").get("") or
-                card.css("h3 a::text").get("") or
-                card.css("h2::text").get("") or
-                card.css(".search-title-bar a::text").get("") or
-                card.css(".listing-name::text").get("")
+            # Title: text lives in h3 a but may have whitespace-only leading nodes; join all
+            title = " ".join(
+                card.css("h3 a::text, h3 a *::text").getall()
+            ).strip() or " ".join(
+                card.css(".search-title-bar a::text, .search-title-bar a *::text").getall()
             ).strip()
 
-            price_text = (
-                card.css("strong.price-detail::text").get("") or
-                card.css(".price-details strong::text").get("") or
-                card.css(".price-details::text").get("") or
-                card.css(".listing-price::text").get("") or
-                card.css("[class*='price']::text").get("")
-            ).strip()
+            # Price: sale price in strong.generic-white; original/strikethrough in span.discount-strike
+            sale_price_text = card.css("strong.generic-white::text").get("").strip()
+            orig_price_text = card.css("span.discount-strike::text").get("").strip()
 
             url = card.css("a::attr(href)").get("") or ""
 
-            if not title or not price_text:
+            if not title or not sale_price_text:
                 continue
 
             part_name = map_part_name(title)
             if not part_name:
                 continue
 
-            prices = parse_price_pkr(price_text)
+            # For discounted items: min=sale price, max=original price (real market range)
+            # For non-discounted: parse_price_pkr gives ±20% range around the single price
+            if sale_price_text and orig_price_text:
+                sale = parse_price_pkr(sale_price_text)
+                orig = parse_price_pkr(orig_price_text)
+                prices = (sale[0], orig[1]) if sale and orig else parse_price_pkr(sale_price_text)
+            else:
+                prices = parse_price_pkr(sale_price_text)
+
             if not prices:
                 continue
 
