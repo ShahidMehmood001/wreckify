@@ -1,3 +1,4 @@
+import json
 import scrapy
 from app.core.part_mapper import (
     map_part_name, extract_car_make, extract_car_model, extract_year, parse_price_pkr
@@ -40,39 +41,55 @@ class OlxSpider(scrapy.Spider):
             )
 
     def parse_listing(self, response):
-        # Try all known OLX Pakistan card selectors
-        cards = (
-            response.css("li[data-aut-id='itemBox']") or
-            response.css("div[data-aut-id='adCard']") or
-            response.css("li._2Gniw") or           # class-based fallback
-            response.css("article.ad-card")
+        # OLX is a Next.js app — listing data is in __NEXT_DATA__ JSON, not in DOM
+        raw = response.css("script#__NEXT_DATA__::text").get()
+        if not raw:
+            self.logger.warning(
+                f"[olx] No __NEXT_DATA__ on {response.url} "
+                f"(status={response.status}, size={len(response.body)}b)"
+            )
+            return
+
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            self.logger.error(f"[olx] Failed to parse __NEXT_DATA__ on {response.url}: {e}")
+            return
+
+        page_props = data.get("props", {}).get("pageProps", {})
+
+        # Try known keys where OLX Pakistan stores listing arrays
+        listings = (
+            page_props.get("listings") or
+            page_props.get("ads") or
+            page_props.get("adList") or
+            page_props.get("regularAds") or
+            page_props.get("data", {}).get("listings") if isinstance(page_props.get("data"), dict) else None or
+            []
         )
 
-        if not cards:
+        if not listings:
             self.logger.warning(
-                f"[olx] No cards found on {response.url} "
-                f"(status={response.status}, size={len(response.body)}b). "
-                f"Page HTML snippet: {response.text[:300]!r}"
+                f"[olx] No listings found in __NEXT_DATA__ on {response.url}. "
+                f"pageProps keys: {list(page_props.keys())}"
             )
+            return
 
-        for card in cards:
-            title = (
-                card.css("[data-aut-id='itemTitle']::text").get("") or
-                card.css("p[data-aut-id='itemTitle']::text").get("") or
-                card.css("h2::text").get("") or
-                card.css("h3::text").get("")
-            ).strip()
+        self.logger.info(f"[olx] Found {len(listings)} listings on {response.url}")
 
-            price_text = (
-                card.css("[data-aut-id='itemPrice']::text").get("") or
-                card.css("span[aria-label*='price' i]::text").get("") or
-                card.css("span.price::text").get("") or
-                card.css("[class*='price']::text").get("")
-            ).strip()
+        for ad in listings:
+            title = (ad.get("title") or ad.get("name") or "").strip()
 
-            url = card.css("a::attr(href)").get("") or ""
+            # Price can be a dict {value, currency} or a plain string/number
+            price_raw = ad.get("price") or ad.get("priceValue") or ""
+            if isinstance(price_raw, dict):
+                price_text = str(price_raw.get("value", "") or price_raw.get("amount", ""))
+            else:
+                price_text = str(price_raw)
 
-            if not title or not price_text:
+            ad_url = ad.get("url") or ad.get("slug") or ad.get("link") or ""
+
+            if not title or not price_text or price_text in ("0", ""):
                 continue
 
             part_name = map_part_name(title)
@@ -80,6 +97,15 @@ class OlxSpider(scrapy.Spider):
                 continue
 
             prices = parse_price_pkr(price_text)
+            if not prices:
+                # price_text may already be a plain number from the API
+                try:
+                    val = float(price_text.replace(",", ""))
+                    if val > 0:
+                        prices = (val * 0.9, val * 1.1)
+                except ValueError:
+                    continue
+
             if not prices:
                 continue
 
@@ -91,20 +117,16 @@ class OlxSpider(scrapy.Spider):
                 "price_min": prices[0],
                 "price_max": prices[1],
                 "source": "olx",
-                "source_url": response.urljoin(url) if url else response.url,
+                "source_url": response.urljoin(ad_url) if ad_url else response.url,
             }
 
-        # Pagination
-        next_page = (
-            response.css("a[data-aut-id='btnLoadMore']::attr(href)").get() or
-            response.css("a.pagination-next::attr(href)").get() or
-            response.css("a[aria-label='Next page']::attr(href)").get()
-        )
+        # Pagination — OLX Pakistan appends ?page=N to the search URL
         current_page = response.meta.get("page", 1)
-
-        if next_page and current_page < 5:
-            yield response.follow(
-                next_page,
+        if len(listings) >= 20 and current_page < 5:
+            base = response.url.split("?")[0]
+            next_url = f"{base}?page={current_page + 1}"
+            yield scrapy.Request(
+                url=next_url,
                 callback=self.parse_listing,
                 meta={"query": response.meta["query"], "page": current_page + 1},
                 headers={"User-Agent": _UA},
