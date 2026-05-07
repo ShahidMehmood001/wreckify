@@ -3,6 +3,12 @@ from app.core.part_mapper import (
     map_part_name, extract_car_make, extract_car_model, extract_year, parse_price_pkr
 )
 
+_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+
 
 class PakWheelsSpider(scrapy.Spider):
     name = "pakwheels"
@@ -10,36 +16,75 @@ class PakWheelsSpider(scrapy.Spider):
         "DOWNLOAD_DELAY": 2.5,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
         "CONCURRENT_REQUESTS": 1,
-        "ROBOTSTXT_OBEY": True,
+        "ROBOTSTXT_OBEY": False,
         "DEFAULT_REQUEST_HEADERS": {
+            "User-Agent": _UA,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
         },
     }
 
+    # PakWheels spare-parts category paths
     CATEGORIES = [
         "body-parts",
+        "lights-and-mirrors",
+        "glass-and-mirrors",
         "lights",
-        "glass-mirrors",
     ]
 
     def start_requests(self):
-        base = "https://www.pakwheels.com/classifieds/car-accessories-parts"
-        for category in self.CATEGORIES:
-            yield scrapy.Request(
-                url=f"{base}/{category}/",
-                callback=self.parse_listing,
-                meta={"category": category, "page": 1},
-            )
+        seen = set()
+        for cat in self.CATEGORIES:
+            url = f"https://www.pakwheels.com/classifieds/spare-parts/{cat}/"
+            if url not in seen:
+                seen.add(url)
+                yield scrapy.Request(
+                    url=url,
+                    callback=self.parse_listing,
+                    meta={"category": cat, "page": 1},
+                    headers={"User-Agent": _UA},
+                    errback=self.handle_error,
+                )
+
+    def handle_error(self, failure):
+        self.logger.error(f"[pakwheels] Request failed: {failure.request.url} — {failure.value}")
 
     def parse_listing(self, response):
-        # PakWheels listing cards
-        cards = response.css("li.classified-listing, div.car-listing")
+        # Try all known PakWheels listing card selectors
+        cards = (
+            response.css("li.classified-listing") or
+            response.css("li.search-listing") or
+            response.css("div.classified-listing") or
+            response.css("article.classified-listing")
+        )
+
+        if not cards:
+            self.logger.warning(
+                f"[pakwheels] No cards found on {response.url} "
+                f"(status={response.status}, size={len(response.body)}b). "
+                f"Page HTML snippet: {response.text[:300]!r}"
+            )
 
         for card in cards:
-            title = card.css("h2::text, h3::text, .listing-name::text").get("").strip()
-            price_text = card.css(".price-details::text, .listing-price::text, strong.price::text").get("").strip()
-            url = card.css("a::attr(href)").get("")
+            title = (
+                card.css("h2 a::text").get("") or
+                card.css("h3 a::text").get("") or
+                card.css("h2::text").get("") or
+                card.css("h3::text").get("") or
+                card.css(".listing-name::text").get("") or
+                card.css(".search-title-bar a::text").get("")
+            ).strip()
+
+            price_text = (
+                card.css("strong.price-detail::text").get("") or
+                card.css(".price-details strong::text").get("") or
+                card.css(".price-details::text").get("") or
+                card.css(".listing-price::text").get("") or
+                card.css("strong.price::text").get("") or
+                card.css("[class*='price']::text").get("")
+            ).strip()
+
+            url = card.css("a::attr(href)").get("") or ""
 
             if not title or not price_text:
                 continue
@@ -64,7 +109,12 @@ class PakWheelsSpider(scrapy.Spider):
             }
 
         # Pagination
-        next_page = response.css("a[rel='next']::attr(href), .next_page::attr(href)").get()
+        next_page = (
+            response.css("a[rel='next']::attr(href)").get() or
+            response.css(".next_page a::attr(href)").get() or
+            response.css("li.next a::attr(href)").get() or
+            response.css("a.next::attr(href)").get()
+        )
         current_page = response.meta.get("page", 1)
 
         if next_page and current_page < 5:
@@ -72,4 +122,6 @@ class PakWheelsSpider(scrapy.Spider):
                 next_page,
                 callback=self.parse_listing,
                 meta={"category": response.meta["category"], "page": current_page + 1},
+                headers={"User-Agent": _UA},
+                errback=self.handle_error,
             )

@@ -28,21 +28,23 @@ def run_all_spiders():
     for spider_class in SPIDER_CLASSES:
         source = spider_class.name
         started_at = datetime.utcnow()
-        session = get_session()
         run_meta[source] = {
-            "session": session,
+            "session": get_session(),
             "started_at": started_at,
             "records_added": 0,
+            "error": None,
         }
 
         crawler = process.create_crawler(spider_class)
 
         def make_closed_handler(src, crwlr):
             def on_spider_closed(spider, reason):
-                for mw in crwlr.engine.scraper.itemproc.middlewares:
-                    if hasattr(mw, "records_added"):
-                        run_meta[src]["records_added"] = mw.records_added
-                        break
+                # Use Scrapy's built-in stats — reliable across all versions
+                count = crwlr.stats.get_value("item_scraped_count", 0) if crwlr.stats else 0
+                run_meta[src]["records_added"] = count
+                if reason != "finished":
+                    run_meta[src]["error"] = f"Spider closed with reason: {reason}"
+                logger.info(f"[{src}] Spider closed — reason={reason}, records={count}")
             return on_spider_closed
 
         crawler.signals.connect(
@@ -55,20 +57,26 @@ def run_all_spiders():
         process.start(stop_after_crawl=True)
     except Exception as e:
         logger.error(f"CrawlerProcess failed: {e}")
+        for meta in run_meta.values():
+            if meta["error"] is None:
+                meta["error"] = str(e)
 
     for source, meta in run_meta.items():
         session = meta["session"]
+        status = "success" if meta["error"] is None else "failed"
         try:
             log_scraper_run(
                 session=session,
                 source=source,
-                status="success",
+                status=status,
                 records_added=meta["records_added"],
-                error_message=None,
+                error_message=meta["error"],
                 started_at=meta["started_at"],
                 finished_at=datetime.utcnow(),
             )
-            logger.info(f"[{source}] Scrape complete — {meta['records_added']} records added")
+            logger.info(
+                f"[{source}] Run logged — status={status}, records={meta['records_added']}"
+            )
         except Exception as e:
             logger.error(f"[{source}] Failed to log run: {e}")
         finally:
