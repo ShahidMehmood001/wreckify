@@ -10,8 +10,8 @@ _UA = (
     "Chrome/124.0.0.0 Safari/537.36"
 )
 
-# OLX REST API — the same endpoint their SPA calls in the browser
-_API = "https://www.olx.com.pk/api/relevance/v4/search"
+# Spare parts category page (user-verified 2026-05-07): /spare-parts_c82
+_BASE = "https://www.olx.com.pk/spare-parts_c82"
 
 SEARCH_QUERIES = [
     "bumper", "car door", "bonnet", "windscreen",
@@ -24,25 +24,21 @@ class OlxSpider(scrapy.Spider):
     custom_settings = {
         "DOWNLOAD_DELAY": 2,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
-        "CONCURRENT_REQUESTS": 2,
+        "CONCURRENT_REQUESTS": 1,
         "ROBOTSTXT_OBEY": False,
         "DEFAULT_REQUEST_HEADERS": {
             "User-Agent": _UA,
-            "Accept": "application/json, */*",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://www.olx.com.pk/",
         },
     }
 
     def start_requests(self):
         for query in SEARCH_QUERIES:
-            url = (
-                f"{_API}?query={query.replace(' ', '+')}"
-                f"&platform=web-desktop&page=1&perPage=40"
-            )
+            url = f"{_BASE}?q={query.replace(' ', '+')}"
             yield scrapy.Request(
                 url=url,
-                callback=self.parse_api,
+                callback=self.parse_page,
                 meta={"query": query, "page": 1},
                 errback=self.handle_error,
             )
@@ -50,37 +46,43 @@ class OlxSpider(scrapy.Spider):
     def handle_error(self, failure):
         self.logger.error(f"[olx] Request error: {failure.request.url} — {failure.value}")
 
-    def parse_api(self, response):
-        # Check if we got JSON back
-        content_type = response.headers.get("Content-Type", b"").decode()
-        if "json" not in content_type:
+    def parse_page(self, response):
+        # Guard: should stay on olx.com.pk spare-parts
+        if "olx.com.pk" not in response.url:
+            self.logger.warning(f"[olx] Unexpected redirect — final URL: {response.url}")
+            return
+
+        # OLX Pakistan uses Next.js SSR — listings are in __NEXT_DATA__ JSON
+        raw = response.css("script#__NEXT_DATA__::text").get()
+        if not raw:
             self.logger.warning(
-                f"[olx] API did not return JSON on {response.url} "
-                f"(Content-Type: {content_type}, status: {response.status}). "
-                f"Response snippet: {response.text[:300]!r}"
+                f"[olx] No __NEXT_DATA__ on {response.url} "
+                f"(status={response.status}, size={len(response.body)}b). "
+                f"HTML snippet: {response.text[:500]!r}"
             )
             return
 
         try:
-            data = json.loads(response.text)
+            next_data = json.loads(raw)
         except json.JSONDecodeError as e:
-            self.logger.error(f"[olx] JSON parse error on {response.url}: {e}")
+            self.logger.error(f"[olx] __NEXT_DATA__ JSON parse error: {e}")
             return
 
-        # Navigate the response — try common OLX API response shapes
+        # Navigate common OLX Next.js pageProps shapes
+        page_props = next_data.get("props", {}).get("pageProps", {})
         listings = (
-            data.get("data", {}).get("listings") or
-            data.get("data", {}).get("ads") or
-            data.get("listings") or
-            data.get("ads") or
+            page_props.get("listings") or
+            page_props.get("ads") or
+            page_props.get("data", {}).get("listings") if isinstance(page_props.get("data"), dict) else None or
             []
         )
 
         if not listings:
+            # Log top-level keys to help identify the correct path
             self.logger.warning(
-                f"[olx] No listings in API response for '{response.meta['query']}'. "
-                f"Top-level keys: {list(data.keys())} "
-                f"data keys: {list(data.get('data', {}).keys()) if isinstance(data.get('data'), dict) else 'N/A'}"
+                f"[olx] No listings in __NEXT_DATA__ for '{response.meta['query']}'. "
+                f"pageProps keys: {list(page_props.keys())} "
+                f"data keys: {list(page_props.get('data', {}).keys()) if isinstance(page_props.get('data'), dict) else 'N/A'}"
             )
             return
 
@@ -131,25 +133,22 @@ class OlxSpider(scrapy.Spider):
 
         self.logger.info(f"[olx] Yielded {scraped} items for '{response.meta['query']}'")
 
-        # Pagination
+        # Pagination — OLX Next.js typically embeds page info in __NEXT_DATA__
         current_page = response.meta.get("page", 1)
-        total = (
-            data.get("data", {}).get("totalCount") or
-            data.get("data", {}).get("total") or
-            data.get("totalCount") or
+        pagination = page_props.get("pagination") or page_props.get("data", {}).get("pagination", {})
+        total_pages = (
+            pagination.get("totalPages") or
+            pagination.get("pages") or
             0
-        )
-        per_page = 40
-        if current_page < 5 and (current_page * per_page) < total:
+        ) if isinstance(pagination, dict) else 0
+
+        if current_page < 5 and current_page < total_pages:
             next_page = current_page + 1
             query = response.meta["query"]
-            next_url = (
-                f"{_API}?query={query.replace(' ', '+')}"
-                f"&platform=web-desktop&page={next_page}&perPage={per_page}"
-            )
+            next_url = f"{_BASE}?q={query.replace(' ', '+')}&page={next_page}"
             yield scrapy.Request(
                 url=next_url,
-                callback=self.parse_api,
+                callback=self.parse_page,
                 meta={"query": query, "page": next_page},
                 errback=self.handle_error,
             )

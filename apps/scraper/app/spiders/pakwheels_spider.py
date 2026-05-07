@@ -14,8 +14,8 @@ SEARCH_QUERIES = [
     "headlight", "taillight", "fender", "side mirror",
 ]
 
-# Confirmed working base URL (user-verified 2026-05-07)
-_BASE = "https://www.pakwheels.com/accessories-spare-parts/search/-/buynow_1/"
+# Confirmed working search URL (user-verified 2026-05-07): /search/-/?q=bumper
+_BASE = "https://www.pakwheels.com/accessories-spare-parts/search/-/"
 
 
 class PakWheelsSpider(scrapy.Spider):
