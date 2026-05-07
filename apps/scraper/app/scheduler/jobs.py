@@ -4,12 +4,13 @@ from scrapy import signals
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from app.core.db import get_session, log_scraper_run
-from app.spiders.olx_spider import OlxSpider
 from app.spiders.pakwheels_spider import PakWheelsSpider
+# OlxSpider disabled — OLX is a React SPA; Algolia API key needed to scrape it.
+# Re-enable once the API endpoint is confirmed. Spider code preserved in olx_spider.py.
 
 logger = logging.getLogger(__name__)
 
-SPIDER_CLASSES = [OlxSpider, PakWheelsSpider]
+SPIDER_CLASSES = [PakWheelsSpider]
 
 
 def run_all_spiders():
