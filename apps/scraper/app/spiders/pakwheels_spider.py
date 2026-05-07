@@ -14,6 +14,9 @@ SEARCH_QUERIES = [
     "headlight", "taillight", "fender", "side mirror",
 ]
 
+# Confirmed working base URL (user-verified 2026-05-07)
+_BASE = "https://www.pakwheels.com/accessories-spare-parts/search/-/buynow_1/"
+
 
 class PakWheelsSpider(scrapy.Spider):
     name = "pakwheels"
@@ -31,8 +34,7 @@ class PakWheelsSpider(scrapy.Spider):
 
     def start_requests(self):
         for query in SEARCH_QUERIES:
-            # PakWheels server-rendered classifieds search
-            url = f"https://www.pakwheels.com/classifieds/?q={query.replace(' ', '+')}"
+            url = f"{_BASE}?q={query.replace(' ', '+')}"
             yield scrapy.Request(
                 url=url,
                 callback=self.parse_listing,
@@ -44,11 +46,11 @@ class PakWheelsSpider(scrapy.Spider):
         self.logger.error(f"[pakwheels] Request error: {failure.request.url} — {failure.value}")
 
     def parse_listing(self, response):
-        # Guard: redirected away from classifieds
-        if "classifieds" not in response.url and response.url.rstrip("/") == "https://www.pakwheels.com":
+        # Guard: redirected away
+        if "accessories-spare-parts" not in response.url:
             self.logger.warning(
-                f"[pakwheels] Redirected to homepage from classifieds search. "
-                f"Final URL: {response.url}"
+                f"[pakwheels] Unexpected redirect — final URL: {response.url}. "
+                f"HTML snippet: {response.text[:400]!r}"
             )
             return
 
