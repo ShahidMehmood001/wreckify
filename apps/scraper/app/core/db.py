@@ -18,8 +18,8 @@ def insert_scraped_price(session, record: dict):
     session.execute(
         text("""
             INSERT INTO scraped_part_prices
-                (id, part_name, car_make, car_model, car_year,
-                 price_min, price_max, currency, source, source_url, scraped_at)
+                (id, "partName", "carMake", "carModel", "carYear",
+                 "priceMin", "priceMax", currency, source, "sourceUrl", "scrapedAt")
             VALUES
                 (gen_random_uuid(), :part_name, :car_make, :car_model, :car_year,
                  :price_min, :price_max, 'PKR', :source, :source_url, NOW())
