@@ -1,6 +1,6 @@
 # Pricing Flow — Design Document
 
-**Status:** DRAFT  
+**Status:** FINAL ✅  
 **Created:** 2026-05-07  
 **Purpose:** Define the correct end-to-end flow for damage cost estimation and market price comparison before any code is written.
 
@@ -44,7 +44,9 @@ Vehicle selection when creating a scan is optional. Many scans have no vehicle l
 - The selected vehicle's `id`, `make`, `model`, and `year` are stored on the scan record and passed to the AI.
 
 ### Guest Scans
-Guest users (1 free scan, no account) still get a scan, but they must provide Make, Model, Year before uploading images. These fields are stored on the scan but not persisted to a profile.
+Guest users (1 free scan, no account) must provide Make, Model, Year **before** uploading images. These fields are stored on the scan but not persisted to a profile (no account = no saved vehicle).
+
+**Decision (2026-05-07):** Require vehicle details before upload, not after. A guest who sees an accurate, car-specific estimate is the one who converts to a paid account. A guest who sees a generic estimate sees nothing impressive and leaves. Three dropdowns (Make, Model, Year) is low friction. It also gives us intent data on which models are being scanned most.
 
 ---
 
@@ -157,7 +159,7 @@ Same part + make + model appearing in multiple runs should not produce duplicate
 When looking up market prices for a detected part on a given vehicle, apply these levels in order. Stop at the first level that returns ≥ 3 records.
 
 ```
-Level 1 — Exact model + year range
+Level 1 — Exact model + year range          ← try first
   partName = X AND carMake = M AND carModel = Mo AND carYear BETWEEN (year-3) AND (year+1)
   Label: "for [Make] [Model] [Year range]"
 
@@ -178,6 +180,8 @@ Level 0 — No data
   Display: "No market data yet for this part"
 ```
 
+**Decision (2026-05-07):** Always try Level 1 first. Pakistan's most common cars have distinct generations with meaningfully different part prices (e.g. Corolla 2010 vs 2020, Civic 2016 vs 2022). Showing year-specific data builds credibility and trust. The fallback chain handles sparse data automatically — there is no downside to trying Level 1 first.
+
 ### 6.2 Minimum Record Threshold
 
 Show a price range only if there are **≥ 3 records** at that fallback level. Fewer than 3 listings is not statistically meaningful.
@@ -186,31 +190,39 @@ Show a price range only if there are **≥ 3 records** at that fallback level. F
 
 Records older than **30 days** are excluded from active price lookup. Scraper runs every 12 hours, so data should stay fresh for covered models.
 
-### 6.4 UI Placement in Scan Result
+### 6.4 UI Layout in Scan Result
 
-Each damaged part card shows two price rows:
+**Decision (2026-05-07):** Show a **combined total first** with an expandable breakdown per part. Most users want a single number ("how much will this cost me?"). Power users and mechanics want the per-part detail. Progressive disclosure serves both without overwhelming either.
 
+**Collapsed view (default):**
 ```
-┌─────────────────────────────────────────────────┐
-│  Front Bumper                    ● MODERATE      │
-│                                                  │
-│  AI Estimate       PKR 10,000 – 18,000           │
-│  Market Range      PKR 8,500 – 22,000            │
-│  └─ Honda Civic (all years) · 14 listings        │
-│     via PakWheels · updated 2 days ago           │
-└─────────────────────────────────────────────────┘
-```
-
-If no market data exists for the part:
-```
-│  Market Range      No data yet for this model    │
+┌──────────────────────────────────────────────────────┐
+│  Damage Assessment — 2019 Honda Civic                │
+│                                                      │
+│  AI Estimate        PKR 28,000 – 52,000  total       │
+│  Market Range       PKR 22,000 – 58,000  total       │
+│  └─ Honda Civic (all years) · Source: PakWheels      │
+│                                                      │
+│  [View part-by-part breakdown ▾]                     │
+└──────────────────────────────────────────────────────┘
 ```
 
-If only generic (Level 4) data available:
+**Expanded view (on click):**
 ```
-│  Market Range      PKR 5,000 – 30,000            │
-│  └─ market average — vehicle not matched         │
+┌──────────────────────────────────────────────────────┐
+│  Front Bumper                       ● MODERATE       │
+│  AI Estimate     PKR 10,000 – 18,000                 │
+│  Market Range    PKR 8,500 – 22,000                  │
+│  └─ Honda Civic (all years) · 14 listings            │
+│                                                      │
+│  Left Headlight                     ● SEVERE         │
+│  AI Estimate     PKR 8,000 – 15,000                  │
+│  Market Range    PKR 6,000 – 18,000                  │
+│  └─ Honda Civic (2016–2022) · 7 listings             │
+└──────────────────────────────────────────────────────┘
 ```
+
+**Source display decision (2026-05-07):** Show `"Source: PakWheels · N listings"` as a plain text trust label. Do **not** include a clickable link to individual listings. Individual listing URLs expire and go stale. More critically, a clickable link sends the user to PakWheels to browse independently — bypassing the workshop inquiry flow and losing a conversion. The trust signal is in naming the source and the count, not in the link itself.
 
 ---
 
@@ -245,14 +257,16 @@ This gives the mechanic everything they need to provide an accurate counter-quot
 
 ---
 
-## 9. Open Questions (Resolve Before Development)
+## 9. Decisions Log
 
-| # | Question | Options |
-|---|---|---|
-| Q1 | Should the vehicle year field drive Level 1 lookup, or is model-level (Level 2) good enough for v1? | Level 2 is simpler and more likely to have data. Level 1 is more accurate for facelift models with different part shapes. |
-| Q2 | For guest scans, should Make/Model/Year be a required step before image upload, or can they proceed and add it after? | Requiring it before upload is cleaner — the AI needs it anyway. |
-| Q3 | Should the scan detail page show a combined total market range or per-part? | Per-part is more useful — a bumper and a headlight are independent purchases. |
-| Q4 | Should we show the source URL (PakWheels listing link) to the user? | Useful as a trust signal and lets users browse actual listings. Low effort to add. |
+All design questions resolved on 2026-05-07.
+
+| # | Question | Decision | Rationale |
+|---|---|---|---|
+| Q1 | Year-level (L1) vs model-level (L2) lookup for v1? | **Use Level 1, fall back naturally** | Pakistan cars have distinct generations (Corolla 2010 ≠ 2020). Year accuracy builds trust. Fallback chain handles sparse data. |
+| Q2 | Guest vehicle details before or after image upload? | **Before upload** | Accurate first impression converts guests to paid users. Generic estimates don't impress. Low friction (3 dropdowns). |
+| Q3 | Combined total or per-part breakdown? | **Combined total + expandable per-part** | Users want one number first. Detail on demand for power users and mechanics. |
+| Q4 | Show PakWheels source URL as clickable link? | **No link — text label only** | Individual URLs expire. Clickable link sends users to PakWheels, bypassing workshop inquiry flow and losing conversions. Show `"Source: PakWheels · N listings"` as plain text trust signal. |
 
 ---
 
