@@ -124,6 +124,7 @@ export interface RepairInquiry {
   status: InquiryStatus;
   createdAt: string;
   sender?: { id: string; email: string; profile?: UserProfile };
+  workshop?: { id: string; name: string; city: string; phone?: string };
 }
 
 export interface AuthTokens {

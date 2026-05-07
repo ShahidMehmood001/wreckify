@@ -97,6 +97,16 @@ export class WorkshopsController {
     return this.workshopsService.getInquiries(userId);
   }
 
+  @Get('inquiries/my')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get own sent inquiries (Owner only)' })
+  @ApiOkResponse({ description: 'Returns all inquiries sent by the authenticated owner' })
+  getOwnerInquiries(@CurrentUser('id') userId: string) {
+    return this.workshopsService.findOwnerInquiries(userId);
+  }
+
   @Patch('inquiries/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MECHANIC)

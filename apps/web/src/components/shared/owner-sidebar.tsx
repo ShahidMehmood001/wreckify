@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Car, ScanLine, FileText, Settings,
-  Building2, LogOut, Zap,
+  Building2, LogOut, Zap, MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/vehicles", label: "Vehicles", icon: Car },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/workshops", label: "Workshops", icon: Building2 },
+  { href: "/inquiries", label: "My Inquiries", icon: MessageSquare },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

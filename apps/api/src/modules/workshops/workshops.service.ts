@@ -126,6 +126,16 @@ export class WorkshopsService {
     });
   }
 
+  async findOwnerInquiries(userId: string) {
+    return this.prisma.repairInquiry.findMany({
+      where: { senderId: userId },
+      include: {
+        workshop: { select: { id: true, name: true, city: true, phone: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async respondToInquiry(inquiryId: string, userId: string, dto: RespondInquiryDto) {
     const workshop = await this.prisma.workshop.findUnique({ where: { userId } });
     if (!workshop) throw new NotFoundException('Workshop not found');
