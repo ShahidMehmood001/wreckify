@@ -70,8 +70,9 @@ class PakWheelsSpider(scrapy.Spider):
             )
             return
 
-        # Diagnostic: log first card's raw HTML so we can verify inner selectors
-        self.logger.warning(f"[pakwheels] First card HTML: {cards[0].get()[:1000]!r}")
+        # Diagnostic: log all text nodes from first card to identify title/price selectors
+        texts = [t.strip() for t in cards[0].css("*::text").getall() if t.strip()]
+        self.logger.warning(f"[pakwheels] Card texts: {texts[:30]}")
 
         scraped = 0
         for card in cards:
