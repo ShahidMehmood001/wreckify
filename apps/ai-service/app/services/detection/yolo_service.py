@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import List
+from typing import List, Optional
 from app.core.config import get_settings
 from app.schemas.detect import DetectedPart, BoundingBox
 from app.services.providers.base import BaseVisionProvider
@@ -43,6 +43,7 @@ def is_model_loaded() -> bool:
 async def detect_damage(
     image_urls: List[str],
     provider: BaseVisionProvider,
+    vehicle_str: Optional[str] = None,
 ) -> List[DetectedPart]:
     images = []
     for url in image_urls:
@@ -56,12 +57,16 @@ async def detect_damage(
         return []
 
     if _model_loaded and _model is not None:
-        return await _detect_with_yolo(images, provider)
+        return await _detect_with_yolo(images, provider, vehicle_str)
     else:
-        return await _detect_demo_mode(images, provider)
+        return await _detect_demo_mode(images, provider, vehicle_str)
 
 
-async def _detect_with_yolo(images: list, provider: BaseVisionProvider) -> List[DetectedPart]:
+async def _detect_with_yolo(
+    images: list,
+    provider: BaseVisionProvider,
+    vehicle_str: Optional[str],
+) -> List[DetectedPart]:
     detected = {}
 
     for url, img in images:
@@ -85,7 +90,7 @@ async def _detect_with_yolo(images: list, provider: BaseVisionProvider) -> List[
     parts = []
     for part_name, data in detected.items():
         severity = confidence_to_severity(data["conf"])
-        description = await provider.describe_damage([data["url"]], part_name, severity)
+        description = await provider.describe_damage([data["url"]], part_name, severity, vehicle_str)
         parts.append(DetectedPart(
             part_name=part_name,
             severity=severity,
@@ -97,7 +102,11 @@ async def _detect_with_yolo(images: list, provider: BaseVisionProvider) -> List[
     return parts
 
 
-async def _detect_demo_mode(images: list, provider: BaseVisionProvider) -> List[DetectedPart]:
+async def _detect_demo_mode(
+    images: list,
+    provider: BaseVisionProvider,
+    vehicle_str: Optional[str],
+) -> List[DetectedPart]:
     """Fallback when no model weights are available — uses LLM vision only."""
     import random
     demo_parts = random.sample(PART_CLASSES, min(3, len(PART_CLASSES)))
@@ -106,7 +115,7 @@ async def _detect_demo_mode(images: list, provider: BaseVisionProvider) -> List[
     for part_name in demo_parts:
         severity = random.choice(["MINOR", "MODERATE", "SEVERE"])
         url = images[0][0] if images else ""
-        description = await provider.describe_damage([url] if url else [], part_name, severity)
+        description = await provider.describe_damage([url] if url else [], part_name, severity, vehicle_str)
         parts.append(DetectedPart(
             part_name=part_name,
             severity=severity,

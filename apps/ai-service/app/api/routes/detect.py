@@ -15,9 +15,16 @@ async def detect(request: DetectRequest, _=Depends(verify_internal_key)):
         model=request.model,
     )
 
+    vehicle_str = (
+        f"{request.vehicle.year} {request.vehicle.make} {request.vehicle.model}"
+        if request.vehicle
+        else None
+    )
+
     detected_parts = await detect_damage(
         image_urls=request.image_urls,
         provider=provider,
+        vehicle_str=vehicle_str,
     )
 
     return DetectResponse(

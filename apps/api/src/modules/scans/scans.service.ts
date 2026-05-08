@@ -21,6 +21,10 @@ export class ScansService {
   ) {}
 
   async createGuestScan(dto: CreateGuestScanDto) {
+    if (!dto.make || !dto.model || !dto.year) {
+      throw new BadRequestException('Vehicle make, model, and year are required for a guest scan');
+    }
+
     if (dto.guestSessionId) {
       const existing = await this.prisma.scan.count({
         where: { guestSessionId: dto.guestSessionId, isGuest: true },
@@ -36,17 +40,18 @@ export class ScansService {
       data: {
         isGuest: true,
         guestSessionId: dto.guestSessionId,
+        guestVehicleMake: dto.make,
+        guestVehicleModel: dto.model,
+        guestVehicleYear: dto.year,
         aiProvider: AIProvider.GEMINI,
       },
     });
   }
 
   async create(userId: string, dto: CreateScanDto) {
-    if (dto.vehicleId) {
-      const vehicle = await this.prisma.vehicle.findUnique({ where: { id: dto.vehicleId } });
-      if (!vehicle || vehicle.userId !== userId) {
-        throw new ForbiddenException('Vehicle not found or does not belong to you');
-      }
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: dto.vehicleId } });
+    if (!vehicle || vehicle.userId !== userId) {
+      throw new ForbiddenException('Vehicle not found or does not belong to you');
     }
 
     const scan = await this.prisma.scan.create({
@@ -108,6 +113,9 @@ export class ScansService {
       const result = await this.aiClient.detect({
         scan_id: scanId,
         image_urls: imageUrls,
+        vehicle: scan.vehicle
+          ? { make: scan.vehicle.make, model: scan.vehicle.model, year: scan.vehicle.year }
+          : undefined,
         provider,
         api_key: apiKey,
       });
@@ -144,6 +152,12 @@ export class ScansService {
 
     const userProfile = await this.prisma.userProfile.findUnique({ where: { userId } });
 
+    const vehicleInfo = scan.vehicle
+      ? { make: scan.vehicle.make, model: scan.vehicle.model, year: scan.vehicle.year }
+      : scan.guestVehicleMake && scan.guestVehicleModel && scan.guestVehicleYear
+        ? { make: scan.guestVehicleMake, model: scan.guestVehicleModel, year: scan.guestVehicleYear }
+        : undefined;
+
     const result = await this.aiClient.estimate({
       scan_id: scanId,
       detected_parts: scan.detectedParts.map((p) => ({
@@ -153,9 +167,7 @@ export class ScansService {
         bounding_box: p.boundingBox,
         description: p.description,
       })),
-      vehicle: scan.vehicle
-        ? { make: scan.vehicle.make, model: scan.vehicle.model, year: scan.vehicle.year }
-        : undefined,
+      vehicle: vehicleInfo,
       provider,
       api_key: apiKey,
       city: userProfile?.city || 'Lahore',
@@ -221,6 +233,9 @@ export class ScansService {
       const result = await this.aiClient.detect({
         scan_id: scanId,
         image_urls: imageUrls,
+        vehicle: scan.guestVehicleMake && scan.guestVehicleModel && scan.guestVehicleYear
+          ? { make: scan.guestVehicleMake, model: scan.guestVehicleModel, year: scan.guestVehicleYear }
+          : undefined,
         provider: AIProvider.GEMINI,
         api_key: undefined,
       });

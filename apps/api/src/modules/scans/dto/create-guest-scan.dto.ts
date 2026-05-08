@@ -1,9 +1,20 @@
-import { IsString, IsOptional } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, IsInt, Min, Max } from 'class-validator';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateGuestScanDto {
   @ApiPropertyOptional({ description: 'Session ID for tracking guest scan quota' })
   @IsOptional()
   @IsString()
   guestSessionId?: string;
+
+  @ApiProperty({ example: 'Honda' }) @IsString() make: string;
+  @ApiProperty({ example: 'Civic' }) @IsString() model: string;
+
+  @ApiProperty({ example: 2020 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1970)
+  @Max(new Date().getFullYear() + 1)
+  year: number;
 }

@@ -4,7 +4,13 @@ from typing import Optional
 
 class BaseVisionProvider(ABC):
     @abstractmethod
-    async def describe_damage(self, image_urls: list[str], part_name: str, severity: str) -> str:
+    async def describe_damage(
+        self,
+        image_urls: list[str],
+        part_name: str,
+        severity: str,
+        vehicle_str: Optional[str] = None,
+    ) -> str:
         pass
 
     @abstractmethod

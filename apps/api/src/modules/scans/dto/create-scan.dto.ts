@@ -1,9 +1,11 @@
 import { IsString, IsOptional, IsEnum } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AIProvider } from '@prisma/client';
 
 export class CreateScanDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() vehicleId?: string;
+  @ApiProperty({ description: 'Vehicle ID (must belong to the authenticated user)' })
+  @IsString()
+  vehicleId: string;
 
   @ApiPropertyOptional({ enum: AIProvider, default: AIProvider.GEMINI })
   @IsOptional()

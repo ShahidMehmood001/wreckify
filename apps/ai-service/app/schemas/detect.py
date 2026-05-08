@@ -16,9 +16,16 @@ class BoundingBox(BaseModel):
     height: float
 
 
+class VehicleInfo(BaseModel):
+    make: str
+    model: str
+    year: int
+
+
 class DetectRequest(BaseModel):
     scan_id: str
     image_urls: List[str]
+    vehicle: Optional[VehicleInfo] = None
     provider: AIProvider = AIProvider.GEMINI
     api_key: Optional[str] = None
     model: Optional[str] = None

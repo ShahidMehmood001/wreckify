@@ -1,20 +1,19 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import {
-  Upload, X, Loader2, Zap, CheckCircle, Car, ChevronRight,
+  Upload, X, Loader2, Zap, CheckCircle, Car, ChevronRight, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { cn, severityColor, formatCurrency } from "@/lib/utils";
+import { PAKISTAN_CARS, PAKISTAN_CAR_MAKES, VEHICLE_YEARS } from "@/lib/pakistan-cars";
 import type { Scan, Vehicle } from "@/types";
-import { useEffect } from "react";
 
 type Step = "upload" | "detecting" | "detected" | "estimating" | "done";
 
@@ -23,12 +22,47 @@ export default function NewScanPage() {
   const [step, setStep] = useState<Step>("upload");
   const [files, setFiles] = useState<File[]>([]);
   const [scan, setScan] = useState<Scan | null>(null);
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
 
+  // Inline registration state (shown when user has no vehicles)
+  const [inlineMake, setInlineMake] = useState("");
+  const [inlineModel, setInlineModel] = useState("");
+  const [inlineYear, setInlineYear] = useState("");
+  const [registering, setRegistering] = useState(false);
+
   useEffect(() => {
-    api.get("/vehicles").then((r) => setVehicles(r.data)).catch(() => {});
+    api.get("/vehicles").then((r) => {
+      const list: Vehicle[] = r.data;
+      setVehicles(list);
+      if (list.length > 0) setSelectedVehicleId(list[0].id);
+    }).catch(() => {});
   }, []);
+
+  const vehicleReady = vehicles.length > 0
+    ? !!selectedVehicleId
+    : !!(inlineMake && inlineModel && inlineYear);
+
+  async function registerInlineVehicle(): Promise<string | null> {
+    setRegistering(true);
+    try {
+      const res = await api.post("/vehicles", {
+        make: inlineMake,
+        model: inlineModel,
+        year: Number(inlineYear),
+      });
+      const newVehicle: Vehicle = res.data;
+      setVehicles([newVehicle]);
+      setSelectedVehicleId(newVehicle.id);
+      return newVehicle.id;
+    } catch {
+      toast.error("Could not register vehicle. Please try again.");
+      return null;
+    } finally {
+      setRegistering(false);
+    }
+  }
 
   const onDrop = useCallback((accepted: File[]) => {
     setFiles((prev) => [...prev, ...accepted].slice(0, 5));
@@ -50,11 +84,22 @@ export default function NewScanPage() {
       toast.error("Please upload at least one image.");
       return;
     }
+
+    let vehicleId = selectedVehicleId;
+
+    if (!vehicleId) {
+      if (!inlineMake || !inlineModel || !inlineYear) {
+        toast.error("Please select your vehicle details first.");
+        return;
+      }
+      const id = await registerInlineVehicle();
+      if (!id) return;
+      vehicleId = id;
+    }
+
     setStep("detecting");
     try {
-      const createRes = await api.post("/scans", {
-        vehicleId: selectedVehicleId || undefined,
-      });
+      const createRes = await api.post("/scans", { vehicleId });
       const newScan: Scan = createRes.data;
 
       const formData = new FormData();
@@ -101,6 +146,8 @@ export default function NewScanPage() {
   const stepLabels: Step[] = ["upload", "detecting", "detected", "estimating", "done"];
   const stepIdx = stepLabels.indexOf(step);
 
+  const inlineModels = inlineMake ? PAKISTAN_CARS[inlineMake] ?? [] : [];
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
@@ -138,25 +185,76 @@ export default function NewScanPage() {
             <CardTitle>Upload Vehicle Photos</CardTitle>
             <CardDescription>Upload up to 5 photos (JPG, PNG, WebP · max 10MB each)</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {vehicles.length > 0 && (
-              <div className="space-y-2">
-                <Label>Link to a vehicle (optional)</Label>
+          <CardContent className="space-y-5">
+            {/* Vehicle selection — required */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Car className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Vehicle <span className="text-destructive">*</span></Label>
+              </div>
+
+              {vehicles.length > 0 ? (
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={selectedVehicleId}
                   onChange={(e) => setSelectedVehicleId(e.target.value)}
                 >
-                  <option value="">— No vehicle selected —</option>
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.make} {v.model} {v.year}
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              ) : (
+                <div className="rounded-lg border border-dashed border-muted-foreground/40 p-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">No vehicles registered. Add your vehicle details to continue.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Make</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                        value={inlineMake}
+                        onChange={(e) => { setInlineMake(e.target.value); setInlineModel(""); }}
+                      >
+                        <option value="">Select make</option>
+                        {PAKISTAN_CAR_MAKES.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Model</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                        value={inlineModel}
+                        onChange={(e) => setInlineModel(e.target.value)}
+                        disabled={!inlineMake}
+                      >
+                        <option value="">Select model</option>
+                        {inlineModels.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Year</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                        value={inlineYear}
+                        onChange={(e) => setInlineYear(e.target.value)}
+                      >
+                        <option value="">Year</option>
+                        {VEHICLE_YEARS.map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
+            {/* Image upload */}
             <div
               {...getRootProps()}
               className={cn(
@@ -195,14 +293,18 @@ export default function NewScanPage() {
               className="w-full"
               size="lg"
               onClick={handleDetect}
-              disabled={files.length === 0 || step === "detecting"}
+              disabled={files.length === 0 || !vehicleReady || step === "detecting" || registering}
             >
-              {step === "detecting" ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Detecting damage...</>
+              {step === "detecting" || registering ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> {registering ? "Registering vehicle..." : "Detecting damage..."}</>
               ) : (
                 <><Zap className="w-4 h-4" /> Detect Damage</>
               )}
             </Button>
+
+            {!vehicleReady && files.length > 0 && (
+              <p className="text-xs text-center text-muted-foreground">Select your vehicle details above to continue.</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -262,7 +364,6 @@ export default function NewScanPage() {
             <CardDescription>Estimated repair costs in Pakistani Rupees</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Summary */}
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">Total Estimated Cost</p>
               <p className="text-3xl font-bold text-primary">
@@ -270,7 +371,6 @@ export default function NewScanPage() {
               </p>
             </div>
 
-            {/* Line Items */}
             <div className="space-y-2">
               <div className="grid grid-cols-5 gap-2 text-xs font-semibold text-muted-foreground px-3">
                 <span className="col-span-2">Part</span>

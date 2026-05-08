@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Zap, Shield, Clock, TrendingUp, Camera, DollarSign, FileText,
-  Building2, Upload, Loader2, AlertTriangle, CheckCircle2, ChevronRight,
+  Building2, Upload, Loader2, AlertTriangle, CheckCircle2, ChevronRight, Car,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
+import { PAKISTAN_CARS, PAKISTAN_CAR_MAKES, VEHICLE_YEARS } from "@/lib/pakistan-cars";
 import type { DetectedPart } from "@/types";
 
 type ScanStep = "idle" | "uploading" | "detecting" | "done" | "limit-reached" | "error";
@@ -53,6 +55,13 @@ export default function LandingPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  const [guestMake, setGuestMake] = useState("");
+  const [guestModel, setGuestModel] = useState("");
+  const [guestYear, setGuestYear] = useState("");
+
+  const vehicleReady = !!(guestMake && guestModel && guestYear);
+  const guestModels = guestMake ? (PAKISTAN_CARS[guestMake] ?? []) : [];
+
   useEffect(() => {
     return () => previewUrls.forEach(URL.revokeObjectURL);
   }, [previewUrls]);
@@ -65,7 +74,7 @@ export default function LandingPage() {
   }
 
   async function runScan() {
-    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length === 0 || !vehicleReady) return;
 
     const guestSessionId = getOrCreateGuestSessionId();
     setStep("uploading");
@@ -74,7 +83,12 @@ export default function LandingPage() {
     let scanId: string;
 
     try {
-      const createRes = await api.post("/scans/guest", { guestSessionId });
+      const createRes = await api.post("/scans/guest", {
+        guestSessionId,
+        make: guestMake,
+        model: guestModel,
+        year: Number(guestYear),
+      });
       scanId = createRes.data.id;
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? "";
@@ -117,6 +131,9 @@ export default function LandingPage() {
     setPreviewUrls([]);
     setDetectedParts([]);
     setErrorMessage("");
+    setGuestMake("");
+    setGuestModel("");
+    setGuestYear("");
   }
 
   const isProcessing = step === "uploading" || step === "detecting";
@@ -240,25 +257,84 @@ export default function LandingPage() {
               {/* Idle / upload area */}
               {(step === "idle" || step === "error") && (
                 <>
-                  <div
-                    className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary hover:bg-primary/5"}`}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
-                  >
-                    <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="font-medium">Drop your vehicle photo here</p>
-                    <p className="text-sm text-muted-foreground mt-1">or click to browse — JPG, PNG up to 10 MB</p>
-                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+                  {/* Step 1 — Vehicle info */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Car className="w-4 h-4 text-muted-foreground" />
+                      <Label className="text-sm font-medium">Your Vehicle <span className="text-destructive">*</span></Label>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Make</Label>
+                        <select
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          value={guestMake}
+                          onChange={(e) => { setGuestMake(e.target.value); setGuestModel(""); }}
+                        >
+                          <option value="">Select make</option>
+                          {PAKISTAN_CAR_MAKES.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Model</Label>
+                        <select
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          value={guestModel}
+                          onChange={(e) => setGuestModel(e.target.value)}
+                          disabled={!guestMake}
+                        >
+                          <option value="">Select model</option>
+                          {guestModels.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Year</Label>
+                        <select
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          value={guestYear}
+                          onChange={(e) => setGuestYear(e.target.value)}
+                        >
+                          <option value="">Year</option>
+                          {VEHICLE_YEARS.map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
-                  {previewUrls.length > 0 && (
-                    <div className="flex gap-2 flex-wrap">
-                      {previewUrls.map((url, i) => (
-                        <img key={i} src={url} alt="" className="w-20 h-20 object-cover rounded-md border" />
-                      ))}
-                    </div>
+                  {/* Step 2 — Image upload (gated behind vehicle info) */}
+                  {vehicleReady && (
+                    <>
+                      <div
+                        className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary hover:bg-primary/5"}`}
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                        onDragLeave={() => setDragOver(false)}
+                        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+                      >
+                        <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                        <p className="font-medium">Drop your vehicle photo here</p>
+                        <p className="text-sm text-muted-foreground mt-1">or click to browse — JPG, PNG up to 10 MB</p>
+                        <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+                      </div>
+
+                      {previewUrls.length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                          {previewUrls.map((url, i) => (
+                            <img key={i} src={url} alt="" className="w-20 h-20 object-cover rounded-md border" />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {!vehicleReady && (
+                    <p className="text-xs text-center text-muted-foreground">Select your vehicle above to unlock image upload.</p>
                   )}
 
                   {step === "error" && (
@@ -268,7 +344,7 @@ export default function LandingPage() {
                     </div>
                   )}
 
-                  <Button className="w-full gap-2" size="lg" disabled={selectedFiles.length === 0} onClick={runScan}>
+                  <Button className="w-full gap-2" size="lg" disabled={selectedFiles.length === 0 || !vehicleReady} onClick={runScan}>
                     <Zap className="w-4 h-4" /> Analyse Damage
                   </Button>
                 </>

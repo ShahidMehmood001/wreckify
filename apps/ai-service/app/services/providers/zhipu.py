@@ -1,5 +1,6 @@
 import httpx
 import base64
+from typing import Optional
 from langchain_openai import ChatOpenAI
 from .base import BaseVisionProvider
 
@@ -11,11 +12,18 @@ class ZhipuProvider(BaseVisionProvider):
         self.api_key = api_key
         self.model = model
 
-    async def describe_damage(self, image_urls: list[str], part_name: str, severity: str) -> str:
+    async def describe_damage(
+        self,
+        image_urls: list[str],
+        part_name: str,
+        severity: str,
+        vehicle_str: Optional[str] = None,
+    ) -> str:
         try:
             from zhipuai import ZhipuAI
             client = ZhipuAI(api_key=self.api_key)
 
+            vehicle_context = f"Vehicle: {vehicle_str}. " if vehicle_str else ""
             messages = [
                 {
                     "role": "user",
@@ -23,8 +31,9 @@ class ZhipuProvider(BaseVisionProvider):
                         {
                             "type": "text",
                             "text": (
-                                f"You are a vehicle damage expert. Describe the {severity} damage "
-                                f"to the {part_name.replace('_', ' ')} in 1-2 sentences."
+                                f"You are a vehicle damage expert. "
+                                f"{vehicle_context}"
+                                f"Describe the {severity} damage to the {part_name.replace('_', ' ')} in 1-2 sentences."
                             ),
                         }
                     ],

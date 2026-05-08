@@ -1,5 +1,6 @@
 import httpx
 import base64
+from typing import Optional
 from langchain_openai import ChatOpenAI
 from .base import BaseVisionProvider
 
@@ -9,16 +10,24 @@ class OpenAIProvider(BaseVisionProvider):
         self.api_key = api_key
         self.model = model
 
-    async def describe_damage(self, image_urls: list[str], part_name: str, severity: str) -> str:
+    async def describe_damage(
+        self,
+        image_urls: list[str],
+        part_name: str,
+        severity: str,
+        vehicle_str: Optional[str] = None,
+    ) -> str:
         try:
             from openai import AsyncOpenAI
             client = AsyncOpenAI(api_key=self.api_key)
 
+            vehicle_context = f"Vehicle: {vehicle_str}. " if vehicle_str else ""
             content = [
                 {
                     "type": "text",
                     "text": (
                         f"You are a vehicle damage assessment expert. "
+                        f"{vehicle_context}"
                         f"Analyze the {severity} damage to the {part_name.replace('_', ' ')}. "
                         f"Provide a concise 1-2 sentence professional description."
                     ),

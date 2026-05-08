@@ -14,6 +14,7 @@ export class AiClientService {
   async detect(payload: {
     scan_id: string;
     image_urls: string[];
+    vehicle?: { make: string; model: string; year: number };
     provider: string;
     api_key?: string;
     model?: string;

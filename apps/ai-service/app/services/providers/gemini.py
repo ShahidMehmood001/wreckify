@@ -1,4 +1,5 @@
 import httpx
+from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from .base import BaseVisionProvider
 
@@ -8,7 +9,13 @@ class GeminiProvider(BaseVisionProvider):
         self.api_key = api_key
         self.model = model
 
-    async def describe_damage(self, image_urls: list[str], part_name: str, severity: str) -> str:
+    async def describe_damage(
+        self,
+        image_urls: list[str],
+        part_name: str,
+        severity: str,
+        vehicle_str: Optional[str] = None,
+    ) -> str:
         try:
             from google import generativeai as genai
             genai.configure(api_key=self.api_key)
@@ -23,9 +30,11 @@ class GeminiProvider(BaseVisionProvider):
                             "data": resp.content,
                         })
 
+            vehicle_context = f"Vehicle: {vehicle_str}. " if vehicle_str else ""
             model = genai.GenerativeModel(self.model)
             prompt = (
                 f"You are a vehicle damage assessment expert. "
+                f"{vehicle_context}"
                 f"Analyze the {severity} damage to the {part_name.replace('_', ' ')} in this vehicle image. "
                 f"Provide a concise 1-2 sentence professional description of the damage condition."
             )
