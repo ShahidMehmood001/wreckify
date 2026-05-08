@@ -1,39 +1,93 @@
-# Wreckify — Future Backlog
+# Wreckify — Product & Technical Backlog
 
-Items that are intentionally deferred. Each needs R&D or design work before sprint planning.
+Items intentionally deferred. Each needs R&D, design work, or a dedicated sprint before implementation.  
+For full audit details see `docs/TECH_REVIEW.md`.
 
 ---
 
-## Workshop Spare Parts Pricing
+## CRITICAL FIXES (must resolve before real user onboarding)
+
+| ID | Issue | Ref |
+|----|-------|-----|
+| C-01 | Rate limiting on all endpoints (especially guest scan + AI detection) | TECH_REVIEW C-01 |
+| C-02 | Detection idempotency — duplicate detected parts on double-call | TECH_REVIEW C-02 |
+| C-03 | Guest session bypass — unlimited free scans by omitting sessionId | TECH_REVIEW C-03 |
+| C-04 | Inquiry response notifications — email owner when mechanic responds | TECH_REVIEW C-04 |
+
+---
+
+## HIGH PRIORITY (resolve within 2 sprints of going live)
+
+| ID | Issue | Ref |
+|----|-------|-----|
+| H-01 | PROCESSING scan recovery — cron to reset stuck scans after 5 min | TECH_REVIEW H-01 |
+| H-02 | Scan quota transaction — atomic check + increment, race condition | TECH_REVIEW H-02 |
+| H-03 | Pagination on scan list and workshop list endpoints | TECH_REVIEW H-03 |
+| H-04 | AI response schema validation before DB insert | TECH_REVIEW H-04 |
+| H-05 | Error monitoring — Sentry integration (API + AI service) | TECH_REVIEW H-05 |
+| H-06 | Missing DB indexes — userId, guestSessionId, senderId, workshopId, status | TECH_REVIEW H-06 |
+
+---
+
+## MEDIUM (before launch)
+
+| ID | Issue | Ref |
+|----|-------|-----|
+| M-01 | Background job queue for AI detection (BullMQ + Redis) | TECH_REVIEW M-01 |
+| M-02 | Cloud image storage — migrate from Docker volume to Cloudinary/S3 | TECH_REVIEW M-02 |
+| M-03 | Server-side vehicle make/model validation against Pakistan cars list | TECH_REVIEW M-03 |
+| M-04 | Scan frontend — handle FAILED status with error + retry UI | TECH_REVIEW M-04 |
+| M-05 | CORS_ORIGIN env var — set for production domain | TECH_REVIEW M-05 |
+
+---
+
+## PRODUCT / DESIGN (future sprints)
+
+| ID | Issue | Notes |
+|----|-------|-------|
+| P-01 | Guest scan value prop — show tiered prices (not just detection) | Depends on Sprint 17 data |
+| P-02 | Insurance agent product — build or remove the role | Decision needed |
+| P-03 | Automated tests — integration tests for scan + auth + inquiry flows | Ongoing |
+| P-04 | Analytics — PostHog or Mixpanel before real user onboarding | 2h to integrate |
+| P-05 | Workshop discovery — ratings, response rate, photos | Future sprint |
+| P-06 | Payment integration — billing for PRO/WORKSHOP/INSURANCE plans | Major sprint |
+| P-07 | Email verification — Resend, Option B flow | Deferred Sprint 13 |
+
+---
+
+## FEATURE BACKLOG
+
+---
+
+### Workshop Spare Parts Inventory
 
 **Status:** Needs R&D  
 **Origin:** Sprint 14 retrospective
 
-Workshops that also sell spare parts should be able to list their inventory with prices. This complements the scraped PakWheels price data by adding real, local, workshop-specific pricing.
+Workshops that sell spare parts should be able to list their inventory with prices and condition. This would complement the gari.pk scraped market prices by adding real, local, workshop-specific pricing — and create a unique data asset that competitors cannot replicate.
 
-**Open questions to resolve before planning:**
-- Data model: is this a separate `WorkshopPart` table, or do we extend `WorkshopService`? Parts have make/model/year compatibility, condition (new/used), and quantity — quite different from services.
-- Discovery UX: do owners see workshop part prices when browsing workshops? When viewing a scan result? Both?
-- Pricing display: should workshop-listed prices appear alongside scraped market prices as a comparison? (e.g., "Market range: PKR 8,000–12,000 · Available at Ali Auto: PKR 9,500")
-- Inventory management: does the mechanic manage stock counts, or is this just a price catalog?
-- Search/filter: owners may want to search workshops *by part availability*, not just city/service.
+**Open questions:**
+- Data model: separate `WorkshopPart` table? Parts have make/model/year compatibility, condition (new/used/Chinese/genuine), and stock quantity.
+- Discovery UX: shown on workshop profile? On scan result? Both?
+- Pricing display: "Market (gari.pk): PKR 12,000–20,000 · Available at Ali Motors Workshop: PKR 14,500"
+- Does the mechanic manage stock counts, or just a price catalog?
 
-**Likely scope when ready:**
-- Backend: `WorkshopPart` model (name, carMake, carModel, carYear, condition, price, inStock)
-- Admin: approve/flag suspicious listings
-- Mechanic portal: parts inventory management page
-- Owner portal: part prices shown on workshop profile and scan result page
+**Likely scope:**
+- `WorkshopPart` model (name, carMake, carModel, carYear, grade, price, inStock)
+- Mechanic portal: inventory management page
+- Owner portal: part availability shown on workshop profile and scan result page
 
 ---
 
-## Email Verification
+### Email Verification
 
 **Status:** Deferred (Sprint 13 retro)  
-**Approach:** Resend (free tier), Option B flow (verify after registration, block features until verified)
+**Approach:** Resend (free tier), Option B — verify after registration, block features until verified
 
 ---
 
-## Cloud Storage Migration
+### Cloud Storage Migration
 
 **Status:** Deferred (Sprint 13 retro)  
-**Approach:** Migrate scan images from local Docker volume to Cloudinary or S3 (Option B)
+**Approach:** Migrate scan images from local Docker volume to Cloudinary or S3 (Option B)  
+**Priority upgraded:** This is now a MEDIUM issue (M-02) — must resolve before any real user is onboarded

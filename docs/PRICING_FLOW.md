@@ -98,101 +98,153 @@ Step 6 — Workshop Inquiry
 
 ---
 
-## 5. Scraper Strategy Redesign
+## 5. Scraper Strategy — gari.pk (Revised 2026-05-08)
 
-### 5.1 The Core Problem with Current Queries
+> **Previous plan (PakWheels generic queries) is retired.** PakWheels search results return listings with `carMake = null` because generic queries produce no car context in the title. See PRICING_PLAN_REVIEW.md for the full multi-role review that produced this revision.
 
-Searching `?q=bumper` returns:
-> "Front Bumper for Sale" — price: PKR 5,000
+### 5.1 Why gari.pk
 
-No car info. `carMake = null`. Useless for per-model lookup.
+gari.pk already organizes spare parts prices by make, model, and condition tier. Their URL pattern is clean and predictable, data is structured, and — critically — they already separate prices into 3 tiers that map directly to Pakistan's real parts market.
 
-Searching `?q=honda+civic+bumper` returns:
-> "Honda Civic 2016–2021 Front Bumper Original" — price: PKR 12,000
+This replaces 170 PakWheels search queries with ~15 structured page scrapes.
 
-Car info is in the title. `carMake = Honda`, `carModel = Civic`. Useful.
+### 5.2 Source and URL Pattern
 
-### 5.2 New Search Query Matrix
+```
+https://gari.pk/new-cars/{make-slug}/{model-slug}/spare-parts-price/
+```
 
-Replace single-part queries with `make + model + part` combinations.
+Examples:
+```
+gari.pk/new-cars/honda/civic/spare-parts-price/
+gari.pk/new-cars/suzuki/mehran/spare-parts-price/
+gari.pk/new-cars/toyota/corolla/spare-parts-price/
+```
 
-**Formula:** `{model} {part_keyword}` — e.g., `"civic bumper"`, `"mehran headlight"`
+One page per model. Each page contains prices for all major parts across 3 tiers.
 
-This keeps queries short and natural while ensuring the listing title will contain the car model.
+### 5.3 The Three Price Tiers
 
-**Coverage — Pakistan Top Models:**
+Pakistan's parts market has exactly 3 meaningful tiers. gari.pk labels them; we relabel for better UX:
 
-| Brand | Models |
-|-------|--------|
-| Suzuki | Mehran, Alto, Cultus, Wagon R, Swift |
-| Toyota | Corolla, Yaris, Hilux, Fortuner, Prado |
-| Honda | Civic, City, HR-V, BR-V |
-| Kia | Sportage, Picanto |
-| Hyundai | Tucson, Elantra |
-| Changan | Alsvin |
-| MG | HS |
+| gari.pk Label | Our Label | Description |
+|---|---|---|
+| Genuine | **Genuine OEM** | Brand new, manufacturer-approved. Required for warranty repairs. Most expensive. |
+| Duplicate | **Aftermarket** | Chinese imports + locally produced alternatives. Most popular choice in Pakistan. |
+| Second-hand | **Used / Salvage** | Removed from wrecked vehicles. Cheapest; condition not guaranteed. |
 
-**17 models × 10 part keywords = 170 targeted search queries**
+**Note:** gari.pk does not separate Chinese imports from locally made parts within "Duplicate." Both are stored under `AFTERMARKET` grade. This is intentional — the data does not support a finer split.
 
-Part keywords: `bumper`, `headlight`, `taillight`, `bonnet`, `windscreen`, `door`, `fender`, `side mirror`, `tailgate`, `roof`
+### 5.4 Database Schema — Grade Enum
 
-### 5.3 Data Quality Rules
+The existing `ScrapedPartPrice` table gains a `grade` column. One row per part per model per tier:
 
-A scraped record is only saved if:
-- `partName` is not null (mapped to a known canonical part)
-- `carMake` OR `carModel` is not null (at least one extracted from title)
-- `priceMin` > 0 and `priceMax` > 0
+```prisma
+enum PartGrade {
+  GENUINE
+  AFTERMARKET
+  USED
+}
+
+model ScrapedPartPrice {
+  // existing fields remain
+  grade    PartGrade           // NEW — replaces single price range
+  @@unique([partName, carMake, carModel, grade])
+  @@index([partName, carMake, carModel, grade])
+}
+```
+
+Upsert strategy: on scrape run, upsert on the unique key `(partName, carMake, carModel, grade)`. This means re-running the scraper simply updates prices rather than creating duplicates.
+
+### 5.5 Part Name Mapping
+
+gari.pk uses human-readable names. Our system uses canonical snake_case. The scraper applies this mapping at parse time:
+
+| gari.pk | Canonical |
+|---|---|
+| Front Bumper | bumper_front |
+| Rear Bumper | bumper_rear |
+| Headlight / Headlamp | headlight |
+| Tail Light | taillight |
+| Bonnet / Hood | bonnet |
+| Boot Lid / Trunk | boot |
+| Windscreen | windscreen |
+| Door (generic) | door_left, door_right (same price applied to both) |
+| Fender / Mudguard | fender_left, fender_right (same price applied to both) |
+| Side Mirror | mirror_left, mirror_right (same price applied to both) |
+| Roof Panel | roof |
+
+### 5.6 Car Coverage
+
+Models confirmed on gari.pk (verify manually before Sprint 17 coding):
+
+| Brand | Models | Status |
+|---|---|---|
+| Suzuki | Mehran, Alto, Cultus, Wagon R, Swift | Confirmed |
+| Toyota | Corolla, Yaris, Hilux, Fortuner, Prado | Confirm |
+| Honda | Civic, City, HR-V, BR-V | Confirm |
+| Kia | Sportage, Picanto | Verify |
+| Hyundai | Tucson, Elantra | Verify |
+| Changan | Alsvin | Likely not on gari.pk — AI estimate only |
+| MG | HS | Likely not on gari.pk — AI estimate only |
+
+Models not found on gari.pk fall back to AI estimate only with a note: "Market data not available for this model."
+
+### 5.7 Data Quality Rules
+
+A scraped record is saved only if:
+- `partName` maps to a known canonical part (see §5.5)
+- `grade` is one of GENUINE, AFTERMARKET, USED
+- `priceMin > 0` and `priceMax >= priceMin`
 - Price is in a sane range: PKR 500 – PKR 2,000,000
+- `genuinePrice >= aftermarketPrice` (sanity check — log warning if violated, still save)
 
-Records with `carMake = null AND carModel = null` are still saved but flagged as generic and ranked lower in fallback lookups.
+### 5.8 Scraper Behaviour
 
-### 5.4 Deduplication
+- Run **once per week** (parts prices change slowly)
+- `time.sleep(2)` between model page requests — polite crawling
+- Proper `User-Agent` header (transparent, not disguised as a browser)
+- Handle HTTP 429/503 with exponential backoff
+- Log every run in `ScraperLog` with records added/failed per model
+- Post-run assertion: alert if fewer than 12 models or fewer than 7 parts per model scraped
 
-Same part + make + model appearing in multiple runs should not produce duplicate rows indefinitely. Insert rule: if a record with the same `partName`, `carMake`, `carModel`, and `sourceUrl` was scraped within the last 7 days, skip it.
+### 5.9 Migration from PakWheels Data
+
+All existing `scraped_part_prices` records collected from PakWheels are unusable (most have `carMake = null`, no grade). The Sprint 17 migration will truncate the table before the gari.pk scraper runs for the first time.
 
 ---
 
-## 6. Price Display Logic
+## 6. Price Display Logic (Revised 2026-05-08)
 
 ### 6.1 Fallback Chain
 
-When looking up market prices for a detected part on a given vehicle, apply these levels in order. Stop at the first level that returns ≥ 3 records.
+gari.pk is scraped per model — data either exists for a model or it doesn't. The fallback chain applies per tier independently:
 
 ```
-Level 1 — Exact model + year range          ← try first
-  partName = X AND carMake = M AND carModel = Mo AND carYear BETWEEN (year-3) AND (year+1)
-  Label: "for [Make] [Model] [Year range]"
+For each tier (GENUINE, AFTERMARKET, USED):
 
-Level 2 — Model, any year
-  partName = X AND carMake = M AND carModel = Mo
-  Label: "for [Make] [Model] (all years)"
+  Level 1 — Exact model match
+    partName = X AND carMake = M AND carModel = Mo AND grade = T
+    Label: "for [Make] [Model]"
 
-Level 3 — Make only, any model
-  partName = X AND carMake = M
-  Label: "for [Make] vehicles"
+  Level 2 — Make only (if model not found on gari.pk)
+    partName = X AND carMake = M AND grade = T
+    Label: "for [Make] vehicles"
 
-Level 4 — All makes (generic market range)
-  partName = X
-  Label: "market average — vehicle not matched"
-
-Level 0 — No data
-  No records found at any level
-  Display: "No market data yet for this part"
+  Level 0 — No data for this tier
+    Display: "—" (dash) in that tier's column
+    If ALL tiers are Level 0: "Market data not yet available for this part"
 ```
 
-**Decision (2026-05-07):** Always try Level 1 first. Pakistan's most common cars have distinct generations with meaningfully different part prices (e.g. Corolla 2010 vs 2020, Civic 2016 vs 2022). Showing year-specific data builds credibility and trust. The fallback chain handles sparse data automatically — there is no downside to trying Level 1 first.
+**Year-level matching is removed.** gari.pk provides model-level data without year ranges. This is sufficient — gari.pk's editors already account for generation differences in their pricing. If a part has meaningfully different prices across generations, gari.pk lists them separately by model variant.
 
-### 6.2 Minimum Record Threshold
+### 6.2 Staleness
 
-Show a price range only if there are **≥ 3 records** at that fallback level. Fewer than 3 listings is not statistically meaningful.
+Records older than **14 days** are excluded from active price lookup. Scraper runs weekly, so 14 days provides one missed-run buffer.
 
-### 6.3 Staleness
+### 6.3 UI Layout in Scan Result — Three Tiers
 
-Records older than **30 days** are excluded from active price lookup. Scraper runs every 12 hours, so data should stay fresh for covered models.
-
-### 6.4 UI Layout in Scan Result
-
-**Decision (2026-05-07):** Show a **combined total first** with an expandable breakdown per part. Most users want a single number ("how much will this cost me?"). Power users and mechanics want the per-part detail. Progressive disclosure serves both without overwhelming either.
+**Decision (2026-05-08):** Aftermarket is the primary highlighted tier (most users) with Genuine and Used shown as alternatives.
 
 **Collapsed view (default):**
 ```
@@ -200,8 +252,11 @@ Records older than **30 days** are excluded from active price lookup. Scraper ru
 │  Damage Assessment — 2019 Honda Civic                │
 │                                                      │
 │  AI Estimate        PKR 28,000 – 52,000  total       │
-│  Market Range       PKR 22,000 – 58,000  total       │
-│  └─ Honda Civic (all years) · Source: PakWheels      │
+│                                                      │
+│  Parts Market — Aftermarket (most popular)           │
+│  PKR 18,000 – 35,000  total                          │
+│  [Also: Genuine OEM · Used/Salvage]                  │
+│  Source: gari.pk                                     │
 │                                                      │
 │  [View part-by-part breakdown ▾]                     │
 └──────────────────────────────────────────────────────┘
@@ -210,19 +265,36 @@ Records older than **30 days** are excluded from active price lookup. Scraper ru
 **Expanded view (on click):**
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Front Bumper                       ● MODERATE       │
-│  AI Estimate     PKR 10,000 – 18,000                 │
-│  Market Range    PKR 8,500 – 22,000                  │
-│  └─ Honda Civic (all years) · 14 listings            │
+│  Front Bumper                         ● MODERATE     │
+│  AI Estimate       PKR 10,000 – 18,000               │
 │                                                      │
-│  Left Headlight                     ● SEVERE         │
-│  AI Estimate     PKR 8,000 – 15,000                  │
-│  Market Range    PKR 6,000 – 18,000                  │
-│  └─ Honda Civic (2016–2022) · 7 listings             │
+│  Genuine OEM       PKR 32,000 – 45,000               │
+│  Aftermarket       PKR  8,500 – 14,000   ← default   │
+│  Used / Salvage    PKR  2,000 –  5,000               │
+│  Source: gari.pk · Honda Civic                       │
+│                                                      │
+│  Left Headlight                        ● SEVERE      │
+│  AI Estimate       PKR  8,000 – 15,000               │
+│                                                      │
+│  Genuine OEM       PKR 22,000 – 35,000               │
+│  Aftermarket       PKR  6,000 – 10,000   ← default   │
+│  Used / Salvage    PKR  1,500 –  4,000               │
+│  Source: gari.pk · Honda Civic                       │
 └──────────────────────────────────────────────────────┘
 ```
 
-**Source display decision (2026-05-07):** Show `"Source: PakWheels · N listings"` as a plain text trust label. Do **not** include a clickable link to individual listings. Individual listing URLs expire and go stale. More critically, a clickable link sends the user to PakWheels to browse independently — bypassing the workshop inquiry flow and losing a conversion. The trust signal is in naming the source and the count, not in the link itself.
+**Source display:** Show `"Source: gari.pk · [Make] [Model]"` as plain text. No clickable link — linking sends users off-platform and away from the workshop inquiry flow.
+
+### 6.4 Missing Tier Handling
+
+Not every tier will have data for every part and model:
+
+| Situation | Display |
+|---|---|
+| All 3 tiers available | Show all 3 rows |
+| Only Aftermarket available | Show Aftermarket row, other rows show "—" |
+| No tiers available, model in DB | "Market data not yet available for this part" |
+| Model not in gari.pk coverage | "Market data not available for this model" |
 
 ---
 
@@ -237,9 +309,11 @@ After this feature is implemented, they will see:
 - Vehicle: Make, Model, Year
 - Damaged parts: list with severity per part
 - AI estimate: total range + line items
-- Market range: per part, with fallback level indicated
+- Market price per part: all 3 tiers (Genuine OEM / Aftermarket / Used) from gari.pk
 
-This gives the mechanic everything they need to provide an accurate counter-quote without seeing the car in person first.
+This gives the mechanic everything needed to provide an accurate counter-quote. The tier breakdown is especially useful — a mechanic can see what the owner can realistically expect to pay for each parts option and price their quote accordingly.
+
+**Future:** When the owner selects a preferred tier (e.g. "I want Aftermarket parts"), that preference travels with the inquiry. The mechanic sees "Customer prefers: Aftermarket" at the top of the inquiry. *(This is a post-Sprint 18 enhancement.)*
 
 ---
 
@@ -259,14 +333,15 @@ This gives the mechanic everything they need to provide an accurate counter-quot
 
 ## 9. Decisions Log
 
-All design questions resolved on 2026-05-07.
-
-| # | Question | Decision | Rationale |
-|---|---|---|---|
-| Q1 | Year-level (L1) vs model-level (L2) lookup for v1? | **Use Level 1, fall back naturally** | Pakistan cars have distinct generations (Corolla 2010 ≠ 2020). Year accuracy builds trust. Fallback chain handles sparse data. |
-| Q2 | Guest vehicle details before or after image upload? | **Before upload** | Accurate first impression converts guests to paid users. Generic estimates don't impress. Low friction (3 dropdowns). |
-| Q3 | Combined total or per-part breakdown? | **Combined total + expandable per-part** | Users want one number first. Detail on demand for power users and mechanics. |
-| Q4 | Show PakWheels source URL as clickable link? | **No link — text label only** | Individual URLs expire. Clickable link sends users to PakWheels, bypassing workshop inquiry flow and losing conversions. Show `"Source: PakWheels · N listings"` as plain text trust signal. |
+| # | Question | Decision | Date | Rationale |
+|---|---|---|---|---|
+| Q1 | Year-level vs model-level lookup? | **Model-level only (gari.pk structure)** | 2026-05-08 | gari.pk provides model-level data. Year-level matching removed — gari.pk editors handle generation differences internally. |
+| Q2 | Guest vehicle details before or after image upload? | **Before upload** | 2026-05-07 | Accurate first impression converts guests to paid users. Low friction (3 dropdowns). |
+| Q3 | Combined total or per-part breakdown? | **Combined total (Aftermarket) + expandable per-part** | 2026-05-08 | Aftermarket is the primary tier for 70–80% of users. Per-part breakdown shows all 3 tiers. |
+| Q4 | Show source URL as clickable link? | **No link — text label only** | 2026-05-07 | Links send users off-platform, bypassing the workshop inquiry flow. `"Source: gari.pk"` as plain text. |
+| Q5 | PakWheels scraping vs gari.pk? | **gari.pk — retired PakWheels plan** | 2026-05-08 | PakWheels generic queries produce listings with no car context (carMake=null). gari.pk has structured model-level, tier-organized data. See PRICING_PLAN_REVIEW.md. |
+| Q6 | 3 tiers or 4? | **3 tiers: Genuine OEM / Aftermarket / Used Salvage** | 2026-05-08 | gari.pk does not separate Chinese from Local in Duplicate tier. Splitting without data source is speculation. |
+| Q7 | Schema: grade column or 3 price pair columns? | **Grade enum, one row per tier** | 2026-05-08 | More normalized, queryable by tier, extensible. |
 
 ---
 
@@ -274,12 +349,16 @@ All design questions resolved on 2026-05-07.
 
 Development must happen in this order — each step depends on the one before it.
 
-| Sprint | Stories | Why this order |
-|--------|---------|----------------|
-| **S16** | Require vehicle on scan creation (inline vehicle registration) | AI can't be fixed until vehicle data reliably reaches the scan |
-| **S16** | Inject vehicle into AI prompt | Depends on vehicle always being present |
-| **S17** | Redesign scraper queries (make × model × part matrix) | Build good data before building display |
-| **S17** | Add deduplication + data quality rules to scraper pipeline | Needed before data volume grows |
-| **S18** | Price lookup API endpoint with fallback chain | Depends on clean scraper data existing |
-| **S18** | Market price display in scan detail page | Depends on lookup endpoint |
-| **S18** | Market price context in workshop inquiry view | Depends on lookup endpoint |
+| Sprint | Stories | Status | Why this order |
+|--------|---------|--------|----------------|
+| **S16** | Require vehicle on scan creation (inline registration) | ✅ Done | AI can't be fixed until vehicle data reliably reaches the scan |
+| **S16** | Inject vehicle into AI prompt | ✅ Done | Depends on vehicle always being present |
+| **S16.5** | Critical hardening — C-01 rate limiting, C-02 idempotency, C-03 guest bypass | Recommended next | Security and data integrity issues must be fixed before more features are built on top |
+| **S17** | Add `grade` enum to ScrapedPartPrice schema + migrate | Planned | Schema must exist before scraper writes data |
+| **S17** | Verify gari.pk coverage + build URL/part-name mapping | Planned | Must verify site is scrapable before coding the spider |
+| **S17** | Build gari.pk spider (3-tier, per-model structured scrape) | Planned | Good data before display |
+| **S17** | Run scraper, review coverage report | Planned | Gate: Sprint 18 does not start until coverage ≥ 70% |
+| **S18** | Price lookup API endpoint (3-tier, model-level fallback) | Planned | Depends on clean gari.pk data existing |
+| **S18** | Market price display in scan detail page (3 tiers, collapsed/expanded) | Planned | Depends on lookup endpoint |
+| **S18** | Market price context in workshop inquiry view | Planned | Depends on lookup endpoint |
+| **S18** | Guest scan shows Aftermarket prices post-detection | Planned | Strongest conversion hook — guests see real prices |
