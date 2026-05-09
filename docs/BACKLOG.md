@@ -12,7 +12,7 @@ For full audit details see `docs/TECH_REVIEW.md`.
 | C-01 | Rate limiting on all endpoints (especially guest scan + AI detection) | TECH_REVIEW C-01 | ✅ Fixed — Sprint 16.5 |
 | C-02 | Detection idempotency — duplicate detected parts on double-call | TECH_REVIEW C-02 | ✅ Fixed — Sprint 16.5 |
 | C-03 | Guest session bypass — unlimited free scans by omitting sessionId | TECH_REVIEW C-03 | ✅ Fixed — Sprint 16.5 |
-| C-04 | Inquiry response notifications — email owner when mechanic responds | TECH_REVIEW C-04 | Open |
+| C-04 | Inquiry response notifications — email owner when mechanic responds | TECH_REVIEW C-04 | Deferred — build as part of proper chat/notification system sprint; one-off email hack not worth the debt |
 
 ---
 
@@ -45,7 +45,7 @@ For full audit details see `docs/TECH_REVIEW.md`.
 
 | ID | Issue | Notes |
 |----|-------|-------|
-| P-01 | Guest scan value prop — show tiered prices (not just detection) | Depends on Sprint 17 data |
+| P-01 | Guest scan value prop — show market prices on scan result | ✅ Done — Sprint 18 |
 | P-02 | Insurance agent product — build or remove the role | Decision needed |
 | P-03 | Automated tests — integration tests for scan + auth + inquiry flows | Ongoing |
 | P-04 | Analytics — PostHog or Mixpanel before real user onboarding | 2h to integrate |
