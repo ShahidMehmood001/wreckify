@@ -51,6 +51,13 @@ export interface ScanImage {
   order: number;
 }
 
+export interface MarketPrice {
+  min: number;
+  max: number;
+  currency: string;
+  grade: string;
+}
+
 export interface DetectedPart {
   id: string;
   partName: string;
@@ -58,6 +65,7 @@ export interface DetectedPart {
   confidenceScore: number;
   boundingBox: Record<string, number>;
   description?: string;
+  marketPrice?: MarketPrice | null;
 }
 
 export interface CostLineItem {

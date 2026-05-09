@@ -259,10 +259,11 @@ export class ScansService {
 
       await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.COMPLETED } });
 
-      return this.prisma.scan.findUnique({
+      const completed = await this.prisma.scan.findUnique({
         where: { id: scanId },
         include: { images: { orderBy: { order: 'asc' } }, detectedParts: true },
       });
+      return this.enrichWithMarketPrices(completed!);
     } catch (err) {
       await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.FAILED } });
       throw err;
@@ -328,6 +329,46 @@ export class ScansService {
 
     if (!scan) throw new NotFoundException('Scan not found');
     if (scan.userId !== userId) throw new ForbiddenException();
-    return scan;
+    return this.enrichWithMarketPrices(scan);
+  }
+
+  private async enrichWithMarketPrices<T extends {
+    detectedParts: { partName: string; [key: string]: any }[];
+    vehicle?: { make: string; model: string } | null;
+    guestVehicleMake?: string | null;
+    guestVehicleModel?: string | null;
+    [key: string]: any;
+  }>(scan: T): Promise<T & { detectedParts: any[] }> {
+    if (!scan.detectedParts?.length) return scan as any;
+
+    const make  = scan.vehicle?.make  ?? scan.guestVehicleMake;
+    const model = scan.vehicle?.model ?? scan.guestVehicleModel;
+    if (!make || !model) return scan as any;
+
+    const partNames = scan.detectedParts.map((p) => p.partName);
+
+    const prices = await this.prisma.scrapedPartPrice.findMany({
+      where: {
+        carMake:  { equals: make,  mode: 'insensitive' },
+        carModel: { equals: model, mode: 'insensitive' },
+        partName: { in: partNames },
+      },
+      select: { partName: true, priceMin: true, priceMax: true, currency: true, grade: true },
+    });
+
+    const priceMap = new Map(prices.map((p) => [p.partName, p]));
+
+    return {
+      ...scan,
+      detectedParts: scan.detectedParts.map((part) => {
+        const p = priceMap.get(part.partName);
+        return {
+          ...part,
+          marketPrice: p
+            ? { min: Number(p.priceMin), max: Number(p.priceMax), currency: p.currency, grade: p.grade }
+            : null,
+        };
+      }),
+    } as any;
   }
 }

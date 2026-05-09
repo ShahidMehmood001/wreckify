@@ -155,12 +155,18 @@ export default function ScanDetailPage() {
           ) : (
             <div className="space-y-2">
               {scan.detectedParts.map((part) => (
-                <div key={part.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
+                <div key={part.id} className="flex items-start justify-between p-3 border rounded-lg">
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium capitalize">{part.partName.replace(/_/g, " ")}</p>
                     {part.description && <p className="text-xs text-muted-foreground mt-0.5">{part.description}</p>}
+                    {part.marketPrice && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                        Market ({part.marketPrice.grade}): {formatCurrency(part.marketPrice.min, part.marketPrice.currency)} – {formatCurrency(part.marketPrice.max, part.marketPrice.currency)}
+                        <span className="text-muted-foreground ml-1">· gari.pk</span>
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 ml-4 shrink-0">
                     <span className="text-xs text-muted-foreground">{Math.round(part.confidenceScore * 100)}% confidence</span>
                     <Badge className={severityColor(part.severity)}>{part.severity}</Badge>
                   </div>
