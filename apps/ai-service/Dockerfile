@@ -13,10 +13,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 # Install CPU-only PyTorch first so ultralytics doesn't pull CUDA wheels (~2 GB).
 # Versions are pinned so Docker can cache this layer and pip hash checks are stable.
-RUN pip install --no-cache-dir --timeout 300 --retries 3 \
-    "torch==2.11.0+cpu" "torchvision==0.26.0+cpu" \
+RUN pip install --no-cache-dir --timeout 120 \
+    "torch==2.3.1+cpu" "torchvision==0.18.1+cpu" \
     --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir --timeout 300 --retries 3 -r requirements.txt
+RUN pip install --no-cache-dir --timeout 120 -r requirements.txt
 
 COPY . .
 
