@@ -7,12 +7,12 @@ For full audit details see `docs/TECH_REVIEW.md`.
 
 ## CRITICAL FIXES (must resolve before real user onboarding)
 
-| ID | Issue | Ref |
-|----|-------|-----|
-| C-01 | Rate limiting on all endpoints (especially guest scan + AI detection) | TECH_REVIEW C-01 |
-| C-02 | Detection idempotency — duplicate detected parts on double-call | TECH_REVIEW C-02 |
-| C-03 | Guest session bypass — unlimited free scans by omitting sessionId | TECH_REVIEW C-03 |
-| C-04 | Inquiry response notifications — email owner when mechanic responds | TECH_REVIEW C-04 |
+| ID | Issue | Ref | Status |
+|----|-------|-----|--------|
+| C-01 | Rate limiting on all endpoints (especially guest scan + AI detection) | TECH_REVIEW C-01 | ✅ Fixed — Sprint 16.5 |
+| C-02 | Detection idempotency — duplicate detected parts on double-call | TECH_REVIEW C-02 | ✅ Fixed — Sprint 16.5 |
+| C-03 | Guest session bypass — unlimited free scans by omitting sessionId | TECH_REVIEW C-03 | ✅ Fixed — Sprint 16.5 |
+| C-04 | Inquiry response notifications — email owner when mechanic responds | TECH_REVIEW C-04 | Open |
 
 ---
 

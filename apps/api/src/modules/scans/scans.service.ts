@@ -25,15 +25,13 @@ export class ScansService {
       throw new BadRequestException('Vehicle make, model, and year are required for a guest scan');
     }
 
-    if (dto.guestSessionId) {
-      const existing = await this.prisma.scan.count({
-        where: { guestSessionId: dto.guestSessionId, isGuest: true },
-      });
-      if (existing >= 1) {
-        throw new ForbiddenException(
-          'Guest scan limit reached. Register for free to get 3 scans/month.',
-        );
-      }
+    const existing = await this.prisma.scan.count({
+      where: { guestSessionId: dto.guestSessionId, isGuest: true },
+    });
+    if (existing >= 1) {
+      throw new ForbiddenException(
+        'Guest scan limit reached. Register for free to get 3 scans/month.',
+      );
     }
 
     return this.prisma.scan.create({
@@ -95,6 +93,10 @@ export class ScansService {
 
   async triggerDetection(scanId: string, userId: string) {
     const scan = await this.getScanOrThrow(scanId, userId);
+
+    if (scan.status === ScanStatus.PROCESSING || scan.status === ScanStatus.COMPLETED) {
+      throw new BadRequestException('Detection already in progress or completed for this scan');
+    }
 
     if (!scan.images.length) {
       throw new BadRequestException('Upload at least one image before running detection');
@@ -217,6 +219,10 @@ export class ScansService {
 
   async triggerDetectionGuest(scanId: string, guestSessionId: string) {
     const scan = await this.getGuestScanOrThrow(scanId, guestSessionId);
+
+    if (scan.status === ScanStatus.PROCESSING || scan.status === ScanStatus.COMPLETED) {
+      throw new BadRequestException('Detection already in progress or completed for this scan');
+    }
 
     if (!scan.images.length) {
       throw new BadRequestException('Upload at least one image before running detection');

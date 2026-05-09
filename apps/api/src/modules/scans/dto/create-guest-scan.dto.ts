@@ -1,12 +1,11 @@
-import { IsString, IsOptional, IsInt, Min, Max } from 'class-validator';
-import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import { IsString, IsInt, Min, Max } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateGuestScanDto {
-  @ApiPropertyOptional({ description: 'Session ID for tracking guest scan quota' })
-  @IsOptional()
+  @ApiProperty({ description: 'Session ID for tracking guest scan quota' })
   @IsString()
-  guestSessionId?: string;
+  guestSessionId: string;
 
   @ApiProperty({ example: 'Honda' }) @IsString() make: string;
   @ApiProperty({ example: 'Civic' }) @IsString() model: string;

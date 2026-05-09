@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nes
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Throttle } from '@nestjs/throttler';
 import { ScansService } from './scans.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { CreateGuestScanDto } from './dto/create-guest-scan.dto';
@@ -18,6 +19,7 @@ export class ScansController {
 
   @Public()
   @Post('guest')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Create a guest scan (1 per session, no auth)' })
   createGuestScan(@Body() dto: CreateGuestScanDto) {
     return this.scansService.createGuestScan(dto);
@@ -76,6 +78,7 @@ export class ScansController {
 
   @Public()
   @Post(':id/detect/guest')
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @ApiOperation({ summary: 'Trigger AI detection for a guest scan' })
   detectGuest(
     @Param('id') id: string,
