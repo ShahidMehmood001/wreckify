@@ -1,5 +1,4 @@
 import re
-import time
 import scrapy
 from app.core.part_mapper import map_gari_pk_part_name, parse_price_pkr
 
@@ -11,23 +10,26 @@ _UA = (
 
 _BASE = "https://www.gari.pk/new-cars"
 
-# All confirmed models with their gari.pk URL slugs.
+# Confirmed model list with verified gari.pk URL slugs.
 # HR-V and BR-V excluded — their pages redirect to the gari.pk home page.
+# As of 2026-05-09: ONLY Honda Civic and Honda City have actual price data;
+# all other model pages return "no spare parts list available".
+# Kept in list so we detect when gari.pk adds data for them.
 MODELS = [
-    # ── Established models (confirmed to have price data) ──────────────────
+    # ── Have confirmed spare-parts price data on gari.pk ──────────────────
+    {"make": "Honda",   "model": "Civic",    "slug": "honda/civic"},
+    {"make": "Honda",   "model": "City",     "slug": "honda/city"},
+    # ── Pages exist, "no spare parts list available" as of 2026-05-09 ─────
     {"make": "Suzuki",  "model": "Mehran",   "slug": "suzuki/mehran"},
     {"make": "Suzuki",  "model": "Alto",     "slug": "suzuki/alto"},
     {"make": "Suzuki",  "model": "Cultus",   "slug": "suzuki/cultus"},
     {"make": "Suzuki",  "model": "Swift",    "slug": "suzuki/swift"},
+    {"make": "Suzuki",  "model": "Wagon R",  "slug": "suzuki/wagon-r"},
     {"make": "Toyota",  "model": "Corolla",  "slug": "toyota/corolla"},
     {"make": "Toyota",  "model": "Yaris",    "slug": "toyota/yaris"},
     {"make": "Toyota",  "model": "Hilux",    "slug": "toyota/hilux"},
     {"make": "Toyota",  "model": "Fortuner", "slug": "toyota/fortuner"},
     {"make": "Toyota",  "model": "Prado",    "slug": "toyota/prado"},
-    {"make": "Honda",   "model": "Civic",    "slug": "honda/civic"},
-    {"make": "Honda",   "model": "City",     "slug": "honda/city"},
-    # ── Pages exist but no data yet — attempt, log, continue ──────────────
-    {"make": "Suzuki",  "model": "Wagon R",  "slug": "suzuki/wagon-r"},
     {"make": "Kia",     "model": "Sportage", "slug": "kia/sportage"},
     {"make": "Kia",     "model": "Picanto",  "slug": "kia/picanto"},
     {"make": "Hyundai", "model": "Tucson",   "slug": "hyundai/tucson"},
@@ -36,14 +38,11 @@ MODELS = [
     {"make": "MG",      "model": "HS",       "slug": "mg/hs"},
 ]
 
-# gari.pk section headings → internal grade enum values
-GRADE_MAP = {
-    "genuine":      "GENUINE",
-    "duplicate":    "AFTERMARKET",
-    "second-hand":  "USED",
-    "second hand":  "USED",
-    "used":         "USED",
-}
+# gari.pk shows one price per part in its carousel — no grade separation in HTML.
+# The displayed price is the current market/aftermarket price (most common in Pakistan).
+# All carousel items are stored as AFTERMARKET — the tier that covers 80% of Pakistani
+# repair decisions (D4 decision from PRICING_PLAN_REVIEW.md).
+DEFAULT_GRADE = "AFTERMARKET"
 
 
 class GariPkSpider(scrapy.Spider):
@@ -96,120 +95,53 @@ class GariPkSpider(scrapy.Spider):
 
         scraped = 0
 
-        # ── Strategy 1: grade sections identified by heading text ──────────
-        # gari.pk renders three card sections: Genuine / Duplicate / Second-Hand
-        # Each section has a heading and a list of part cards underneath.
-        for heading in response.css("h2, h3, h4, .section-title, [class*='heading']"):
-            heading_text = " ".join(heading.css("::text").getall()).strip().lower()
-            grade = self._resolve_grade(heading_text)
-            if not grade:
-                continue
-
-            # Walk to the nearest parent that contains both the heading and part cards,
-            # then select cards within it but not in sibling grade sections.
-            section = heading.xpath(
-                "ancestor::div[.//div[contains(@class,'card') "
-                "or contains(@class,'part') "
-                "or contains(@class,'item')]][1]"
-            )
-            if not section:
-                # Fallback: look for the next sibling container
-                section = heading.xpath("following-sibling::div[1]")
-
-            cards = section.css(
-                "[class*='card'], [class*='part-item'], [class*='price-item'], "
-                ".col, li"
-            )
-
-            for card in cards:
-                item = self._extract_item(card, make, model, grade, response.url)
-                if item:
-                    yield item
-                    scraped += 1
-
-        # ── Strategy 2: table with columns per grade ───────────────────────
-        # Some pages may use a single table: Part Name | Genuine | Duplicate | Second-hand
-        if scraped == 0:
-            scraped += yield from self._parse_table(response, make, model)
+        # gari.pk structure (verified from HTML inspection):
+        #   div.responsive.my_slider
+        #     └─ div.fleft.my_s_class  (one card per part)
+        #          └─ div.slider_inner
+        #               └─ div (wrapper)
+        #                    ├─ div.bold.fleft  →  <a>Part Name</a>
+        #                    └─ div[color:gray].fleft  →  "Rs. 51,340"
+        #
+        # One slider, one price per part — stored as AFTERMARKET (market price).
+        for card in response.css("div.my_s_class"):
+            item = self._extract_card(card, make, model, response.url)
+            if item:
+                yield item
+                scraped += 1
 
         if scraped == 0:
             self.logger.warning(
-                f"[gari.pk] {make} {model} — page loaded but 0 items extracted. "
-                f"HTML snippet: {response.text[:800]!r}"
+                f"[gari.pk] {make} {model} — 0 items extracted. "
+                f"Snippet: {response.text[193000:194500]!r}"
             )
         else:
             self.logger.info(f"[gari.pk] {make} {model} — {scraped} items scraped")
 
-    def _parse_table(self, response, make, model):
-        """Fallback: parse a table where each column is a grade."""
-        scraped = 0
-        for table in response.css("table"):
-            headers = [
-                th.css("::text").get("").strip().lower()
-                for th in table.css("thead th, thead td")
-            ]
-            grade_cols = {}
-            for idx, header in enumerate(headers):
-                grade = self._resolve_grade(header)
-                if grade:
-                    grade_cols[idx] = grade
-
-            if not grade_cols:
-                continue
-
-            for row in table.css("tbody tr"):
-                cells = row.css("td")
-                if not cells:
-                    continue
-                part_label = cells[0].css("::text").get("").strip()
-                part_name  = map_gari_pk_part_name(part_label)
-                if not part_name:
-                    continue
-
-                for col_idx, grade in grade_cols.items():
-                    if col_idx >= len(cells):
-                        continue
-                    price_text = cells[col_idx].css("::text").get("").strip()
-                    prices = parse_price_pkr(price_text)
-                    if not prices:
-                        continue
-                    yield {
-                        "part_name":  part_name,
-                        "car_make":   make,
-                        "car_model":  model,
-                        "grade":      grade,
-                        "price_min":  prices[0],
-                        "price_max":  prices[1],
-                        "source":     "gari_pk",
-                        "source_url": response.url,
-                    }
-                    scraped += 1
-        return scraped
-
-    def _extract_item(self, card, make, model, grade, url):
-        """Extract one part + price from a card element."""
-        texts = [t.strip() for t in card.css("::text").getall() if t.strip()]
-        if not texts:
-            return None
-
-        # Part name is usually the first meaningful text in the card
-        part_label = next(
-            (t for t in texts if len(t) > 3 and not re.match(r'^PKR|^Rs', t, re.I)),
-            None,
+    def _extract_card(self, card, make, model, url):
+        # Part name: inside div.bold > a
+        part_label = (
+            card.css("div.bold a::text").get("").strip() or
+            card.css("div.bold::text").get("").strip()
         )
         if not part_label:
             return None
 
         part_name = map_gari_pk_part_name(part_label)
         if not part_name:
-            self.logger.debug(f"[gari.pk] Unmapped part: {part_label!r}")
+            self.logger.debug(f"[gari.pk] Unmapped part label: {part_label!r}")
             return None
 
-        # Price: find text containing PKR or Rs or digits with commas
-        price_text = next(
-            (t for t in texts if re.search(r'PKR|Rs\.?|\d{3,}', t, re.I)),
-            None,
-        )
+        # Price: div with inline style containing "color: gray" or "color:gray"
+        price_text = card.css("div[style*='color: gray']::text").get("").strip()
+        if not price_text:
+            # Fallback: last div.fleft that contains a price pattern
+            for div in card.css("div.fleft"):
+                text = div.css("::text").get("").strip()
+                if re.search(r'Rs\.?\s*[\d,]+', text):
+                    price_text = text
+                    break
+
         if not price_text:
             return None
 
@@ -221,16 +153,9 @@ class GariPkSpider(scrapy.Spider):
             "part_name":  part_name,
             "car_make":   make,
             "car_model":  model,
-            "grade":      grade,
+            "grade":      DEFAULT_GRADE,
             "price_min":  prices[0],
             "price_max":  prices[1],
             "source":     "gari_pk",
             "source_url": url,
         }
-
-    @staticmethod
-    def _resolve_grade(text: str) -> str | None:
-        for keyword, grade in GRADE_MAP.items():
-            if keyword in text:
-                return grade
-        return None

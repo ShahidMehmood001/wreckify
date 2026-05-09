@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 SPIDER_CLASSES = [GariPkSpider]
 
-# Minimum models that must return data for the run to be considered healthy.
-MIN_MODELS_THRESHOLD = 8
+# gari.pk currently publishes spare-parts data for only 2 models (Honda Civic, Honda City).
+# All other model pages exist but return "no spare parts list available".
+# Threshold = 2: alert only if both known models go dark simultaneously.
+MIN_MODELS_THRESHOLD = 2
 
 
 def run_all_spiders():
@@ -61,8 +63,14 @@ def run_all_spiders():
                 logger.info(f"[{src}] Spider closed — reason={reason}, records={count}")
             return on_spider_closed
 
-        crawler.signals.connect(make_item_handler(source),   signal=signals.item_scraped)
-        crawler.signals.connect(make_closed_handler(source, crawler), signal=signals.spider_closed)
+        # Store handlers in run_meta to prevent GC of PyDispatcher weak references.
+        item_handler  = make_item_handler(source)
+        closed_handler = make_closed_handler(source, crawler)
+        run_meta[source]["_item_handler"]   = item_handler
+        run_meta[source]["_closed_handler"] = closed_handler
+
+        crawler.signals.connect(item_handler,   signal=signals.item_scraped)
+        crawler.signals.connect(closed_handler, signal=signals.spider_closed)
         process.crawl(crawler)
 
     try:
