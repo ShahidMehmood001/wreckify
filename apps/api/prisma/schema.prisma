@@ -57,6 +57,12 @@ enum AIProvider {
   ZHIPU
 }
 
+enum PartGrade {
+  GENUINE
+  AFTERMARKET
+  USED
+}
+
 // ─── Users ────────────────────────────────────────────────────
 
 model User {
@@ -306,19 +312,20 @@ model InsuranceAgent {
 // ─── Scraper Data ─────────────────────────────────────────────
 
 model ScrapedPartPrice {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   partName  String
-  carMake   String?
-  carModel  String?
-  carYear   Int?
+  carMake   String
+  carModel  String
+  grade     PartGrade
   priceMin  Decimal
   priceMax  Decimal
-  currency  String   @default("PKR")
+  currency  String    @default("PKR")
   source    String
   sourceUrl String?
-  scrapedAt DateTime @default(now())
+  scrapedAt DateTime  @default(now())
 
-  @@index([partName, carMake])
+  @@unique([partName, carMake, carModel, grade])
+  @@index([partName, carMake, carModel, grade])
   @@map("scraped_part_prices")
 }
 

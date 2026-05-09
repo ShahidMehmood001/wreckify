@@ -18,11 +18,17 @@ def insert_scraped_price(session, record: dict):
     session.execute(
         text("""
             INSERT INTO scraped_part_prices
-                (id, "partName", "carMake", "carModel", "carYear",
+                (id, "partName", "carMake", "carModel", grade,
                  "priceMin", "priceMax", currency, source, "sourceUrl", "scrapedAt")
             VALUES
-                (gen_random_uuid(), :part_name, :car_make, :car_model, :car_year,
+                (gen_random_uuid(), :part_name, :car_make, :car_model, :grade,
                  :price_min, :price_max, 'PKR', :source, :source_url, NOW())
+            ON CONFLICT ("partName", "carMake", "carModel", grade)
+            DO UPDATE SET
+                "priceMin"   = EXCLUDED."priceMin",
+                "priceMax"   = EXCLUDED."priceMax",
+                "sourceUrl"  = EXCLUDED."sourceUrl",
+                "scrapedAt"  = NOW()
         """),
         record,
     )

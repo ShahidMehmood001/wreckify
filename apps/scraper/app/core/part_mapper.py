@@ -1,6 +1,6 @@
 import re
 
-# Keywords → canonical part name
+# Keywords → canonical part name (used by PakWheels spider for title matching)
 PART_KEYWORDS = {
     "bumper_front":  ["front bumper", "bumper front", "front bumper guard"],
     "bumper_rear":   ["rear bumper", "bumper rear", "back bumper"],
@@ -18,6 +18,54 @@ PART_KEYWORDS = {
     "roof":          ["roof", "car roof", "top panel"],
 }
 
+# gari.pk exact/partial part label → canonical name.
+# gari.pk uses human-readable Pakistani market names — mapped here to our snake_case keys.
+# Generic sided parts (Door, Fender, Mirror) map to _left as the canonical lookup key;
+# the API layer expands this to cover both left and right at query time.
+GARI_PK_PART_MAP = {
+    # Bumpers
+    "front bumper":        "bumper_front",
+    "rear bumper":         "bumper_rear",
+    "bumper":              "bumper_front",
+    # Bonnet / Boot
+    "bonnet":              "bonnet",
+    "hood":                "bonnet",
+    "boot lid":            "boot",
+    "trunk":               "boot",
+    "dicky":               "boot",
+    "dickey":              "boot",
+    # Lights
+    "headlight":           "headlight",
+    "head light":          "headlight",
+    "headlamp":            "headlight",
+    "front light":         "headlight",
+    "tail light":          "taillight",
+    "taillight":           "taillight",
+    "taillamp":            "taillight",
+    "rear light":          "taillight",
+    "back light":          "taillight",
+    # Windscreen
+    "windscreen":          "windscreen",
+    "windshield":          "windscreen",
+    "front glass":         "windscreen",
+    # Doors (generic — sides not distinguished on gari.pk)
+    "front door":          "door_left",
+    "rear door":           "door_left",
+    "door":                "door_left",
+    # Fenders / Mudguards
+    "front fender":        "fender_left",
+    "rear fender":         "fender_left",
+    "fender":              "fender_left",
+    "mudguard":            "fender_left",
+    # Mirrors
+    "side mirror":         "mirror_left",
+    "mirror":              "mirror_left",
+    # Roof
+    "roof":                "roof",
+    "roof panel":          "roof",
+    "top panel":           "roof",
+}
+
 CAR_MAKES = [
     "suzuki", "toyota", "honda", "kia", "hyundai", "mg", "changan",
     "daihatsu", "nissan", "mitsubishi", "proton", "haval", "baic",
@@ -26,12 +74,31 @@ CAR_MAKES = [
 
 
 def map_part_name(title: str) -> str | None:
+    """Map a PakWheels listing title to a canonical part name."""
     title_lower = title.lower()
     for part_name, keywords in PART_KEYWORDS.items():
         for kw in keywords:
             if kw in title_lower:
                 return part_name
     return None
+
+
+def map_gari_pk_part_name(label: str) -> str | None:
+    """Map a gari.pk part label to a canonical part name.
+
+    Tries exact match first, then longest partial match to handle labels
+    like 'Front Bumper Guard' correctly.
+    """
+    label_lower = label.strip().lower()
+    # Exact match
+    if label_lower in GARI_PK_PART_MAP:
+        return GARI_PK_PART_MAP[label_lower]
+    # Longest-key partial match — prevents 'bumper' matching before 'front bumper'
+    best_key, best_canonical = None, None
+    for key, canonical in GARI_PK_PART_MAP.items():
+        if key in label_lower and (best_key is None or len(key) > len(best_key)):
+            best_key, best_canonical = key, canonical
+    return best_canonical
 
 
 def extract_car_make(title: str) -> str | None:
