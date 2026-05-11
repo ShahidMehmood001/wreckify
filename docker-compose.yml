@@ -2,9 +2,6 @@
 x-db-url: &db-url
   DATABASE_URL: postgresql://postgres:postgres@postgres:5432/wreckify
 
-x-redis-url: &redis-url
-  REDIS_URL: redis://redis:6379
-
 services:
 
   # ── PostgreSQL ─────────────────────────────────────────────────
@@ -49,7 +46,7 @@ services:
       - "3001:3001"
     environment:
       <<: *db-url
-      <<: *redis-url
+      REDIS_URL: redis://redis:6379
       PORT: 3001
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:-change_me_jwt_secret_32_chars_min}
