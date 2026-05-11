@@ -19,10 +19,12 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
   app.use(cookieParser());
 
-  app.enableCors({
-    origin: config.get('CORS_ORIGIN') || 'http://localhost:3000',
-    credentials: true,
-  });
+  const rawOrigin = config.get<string>('corsOrigin') || 'http://localhost:3000';
+  const corsOrigin = rawOrigin.includes(',')
+    ? rawOrigin.split(',').map((o) => o.trim())
+    : rawOrigin;
+
+  app.enableCors({ origin: corsOrigin, credentials: true });
 
   app.useGlobalPipes(
     new ValidationPipe({
