@@ -11,6 +11,7 @@ import { CreateGuestScanDto } from './dto/create-guest-scan.dto';
 import { AIProvider, ScanStatus } from '@prisma/client';
 import { decrypt } from '../../common/utils/encryption.util';
 import { ConfigService } from '@nestjs/config';
+import { validateDetectResponse, validateEstimateResponse } from './ai-response.validator';
 
 @Injectable()
 export class ScansService {
@@ -52,20 +53,38 @@ export class ScansService {
       throw new ForbiddenException('Vehicle not found or does not belong to you');
     }
 
-    const scan = await this.prisma.scan.create({
-      data: {
-        userId,
-        vehicleId: dto.vehicleId,
-        aiProvider: dto.aiProvider || AIProvider.GEMINI,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      // Lock the subscription row so concurrent requests queue here instead of racing.
+      const rows = await tx.$queryRaw<Array<{ scansUsed: number; scansPerMonth: number }>>`
+        SELECT s."scansUsed", p."scansPerMonth"
+        FROM user_subscriptions s
+        JOIN plans p ON s."planId" = p.id
+        WHERE s."userId" = ${userId}
+        FOR UPDATE
+      `;
 
-    await this.prisma.userSubscription.update({
-      where: { userId },
-      data: { scansUsed: { increment: 1 } },
-    });
+      if (!rows.length) throw new ForbiddenException('No active subscription found');
 
-    return scan;
+      const { scansUsed, scansPerMonth } = rows[0];
+      if (scansPerMonth !== -1 && scansUsed >= scansPerMonth) {
+        throw new ForbiddenException(
+          `Monthly scan limit reached (${scansPerMonth} scans). Upgrade your plan to continue.`,
+        );
+      }
+
+      await tx.userSubscription.update({
+        where: { userId },
+        data: { scansUsed: { increment: 1 } },
+      });
+
+      return tx.scan.create({
+        data: {
+          userId,
+          vehicleId: dto.vehicleId,
+          aiProvider: dto.aiProvider || AIProvider.GEMINI,
+        },
+      });
+    });
   }
 
   async addImages(scanId: string, userId: string, files: Express.Multer.File[]) {
@@ -112,7 +131,7 @@ export class ScansService {
         img.url.replace(/^https?:\/\/[^/]+/, internalBaseUrl),
       );
 
-      const result = await this.aiClient.detect({
+      const raw = await this.aiClient.detect({
         scan_id: scanId,
         image_urls: imageUrls,
         vehicle: scan.vehicle
@@ -122,8 +141,10 @@ export class ScansService {
         api_key: apiKey,
       });
 
+      const result = validateDetectResponse(raw);
+
       await this.prisma.detectedPart.createMany({
-        data: result.detected_parts.map((p: any) => ({
+        data: result.detected_parts.map((p) => ({
           scanId,
           partName: p.part_name,
           severity: p.severity,
@@ -160,7 +181,7 @@ export class ScansService {
         ? { make: scan.guestVehicleMake, model: scan.guestVehicleModel, year: scan.guestVehicleYear }
         : undefined;
 
-    const result = await this.aiClient.estimate({
+    const rawEstimate = await this.aiClient.estimate({
       scan_id: scanId,
       detected_parts: scan.detectedParts.map((p) => ({
         part_name: p.partName,
@@ -175,13 +196,15 @@ export class ScansService {
       city: userProfile?.city || 'Lahore',
     });
 
+    const result = validateEstimateResponse(rawEstimate);
+
     await this.prisma.costEstimate.create({
       data: {
         scanId,
         totalMin: result.total_min,
         totalMax: result.total_max,
         currency: result.currency,
-        lineItems: result.line_items.map((item: any) => ({
+        lineItems: result.line_items.map((item) => ({
           part: item.part,
           partsMin: item.parts_min,
           partsMax: item.parts_max,
@@ -236,7 +259,7 @@ export class ScansService {
         img.url.replace(/^https?:\/\/[^/]+/, internalBaseUrl),
       );
 
-      const result = await this.aiClient.detect({
+      const rawGuest = await this.aiClient.detect({
         scan_id: scanId,
         image_urls: imageUrls,
         vehicle: scan.guestVehicleMake && scan.guestVehicleModel && scan.guestVehicleYear
@@ -246,8 +269,10 @@ export class ScansService {
         api_key: undefined,
       });
 
+      const result = validateDetectResponse(rawGuest);
+
       await this.prisma.detectedPart.createMany({
-        data: result.detected_parts.map((p: any) => ({
+        data: result.detected_parts.map((p) => ({
           scanId,
           partName: p.part_name,
           severity: p.severity,

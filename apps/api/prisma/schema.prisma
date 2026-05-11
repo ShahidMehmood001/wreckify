@@ -163,6 +163,7 @@ model Vehicle {
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   scans Scan[]
 
+  @@index([userId])
   @@map("vehicles")
 }
 
@@ -189,6 +190,9 @@ model Scan {
   costEstimate  CostEstimate?
   report        Report?
 
+  @@index([userId])
+  @@index([guestSessionId])
+  @@index([status])
   @@map("scans")
 }
 
@@ -201,6 +205,7 @@ model ScanImage {
 
   scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
+  @@index([scanId])
   @@map("scan_images")
 }
 
@@ -215,6 +220,7 @@ model DetectedPart {
 
   scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
+  @@index([scanId])
   @@map("detected_parts")
 }
 
@@ -265,6 +271,7 @@ model Workshop {
   services  WorkshopService[]
   inquiries RepairInquiry[]
 
+  @@index([city, status])
   @@map("workshops")
 }
 
@@ -275,6 +282,7 @@ model WorkshopService {
 
   workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
 
+  @@index([workshopId])
   @@map("workshop_services")
 }
 
@@ -291,6 +299,8 @@ model RepairInquiry {
   sender   User     @relation("InquirySender", fields: [senderId], references: [id], onDelete: Cascade)
   workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
 
+  @@index([senderId])
+  @@index([workshopId, status])
   @@map("repair_inquiries")
 }
 
