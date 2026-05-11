@@ -4,6 +4,8 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiClientService } from '../ai-client/ai-client.service';
@@ -13,6 +15,7 @@ import { AIProvider, ScanStatus } from '@prisma/client';
 import { decrypt } from '../../common/utils/encryption.util';
 import { ConfigService } from '@nestjs/config';
 import { validateDetectResponse, validateEstimateResponse } from './ai-response.validator';
+import { DETECTION_QUEUE, DETECTION_JOB } from '../queue/queue.constants';
 
 @Injectable()
 export class ScansService {
@@ -20,6 +23,7 @@ export class ScansService {
     private prisma: PrismaService,
     private aiClient: AiClientService,
     private config: ConfigService,
+    @InjectQueue(DETECTION_QUEUE) private detectionQueue: Queue,
   ) {}
 
   async createGuestScan(dto: CreateGuestScanDto) {
@@ -124,43 +128,24 @@ export class ScansService {
 
     await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.PROCESSING } });
 
-    try {
-      const { provider, apiKey } = await this.resolveAiConfig(userId, scan.aiProvider);
+    const { provider, apiKey } = await this.resolveAiConfig(userId, scan.aiProvider);
 
-      const internalBaseUrl = process.env.APP_INTERNAL_URL || 'http://api:3001';
-      const imageUrls = scan.images.map((img) =>
-        img.url.replace(/^https?:\/\/[^/]+/, internalBaseUrl),
-      );
+    const internalBaseUrl = process.env.APP_INTERNAL_URL || 'http://api:3001';
+    const imageUrls = scan.images.map((img) =>
+      img.url.replace(/^https?:\/\/[^/]+/, internalBaseUrl),
+    );
 
-      const raw = await this.aiClient.detect({
-        scan_id: scanId,
-        image_urls: imageUrls,
-        vehicle: scan.vehicle
-          ? { make: scan.vehicle.make, model: scan.vehicle.model, year: scan.vehicle.year }
-          : undefined,
-        provider,
-        api_key: apiKey,
-      });
+    await this.detectionQueue.add(DETECTION_JOB, {
+      scanId,
+      imageUrls,
+      vehicleInfo: scan.vehicle
+        ? { make: scan.vehicle.make, model: scan.vehicle.model, year: scan.vehicle.year }
+        : undefined,
+      provider,
+      apiKey,
+    });
 
-      const result = validateDetectResponse(raw);
-
-      await this.prisma.detectedPart.createMany({
-        data: result.detected_parts.map((p) => ({
-          scanId,
-          partName: p.part_name,
-          severity: p.severity,
-          confidenceScore: p.confidence_score,
-          boundingBox: p.bounding_box,
-          description: p.description,
-        })),
-      });
-
-      await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.COMPLETED } });
-      return this.getScanOrThrow(scanId, userId);
-    } catch (err) {
-      await this.prisma.scan.update({ where: { id: scanId }, data: { status: ScanStatus.FAILED } });
-      throw err;
-    }
+    return this.getScanOrThrow(scanId, userId);
   }
 
   async triggerEstimation(scanId: string, userId: string) {

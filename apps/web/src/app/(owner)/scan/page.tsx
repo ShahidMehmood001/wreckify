@@ -109,14 +109,37 @@ export default function NewScanPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const detectRes = await api.post(`/scans/${newScan.id}/detect`);
-      setScan(detectRes.data);
-      setStep("detected");
+      await api.post(`/scans/${newScan.id}/detect`);
+
+      // Poll until detection completes or fails (max 2 minutes)
+      const result = await pollScanStatus(newScan.id);
+      if (result.status === "COMPLETED") {
+        setScan(result);
+        setStep("detected");
+      } else {
+        setErrorMsg("Detection failed. Please try again.");
+        setStep("failed");
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setErrorMsg(msg || "Detection failed. Please try again.");
       setStep("failed");
     }
+  }
+
+  async function pollScanStatus(scanId: string): Promise<Scan> {
+    const INTERVAL = 3000;
+    const TIMEOUT = 2 * 60 * 1000;
+    const start = Date.now();
+
+    while (Date.now() - start < TIMEOUT) {
+      await new Promise((r) => setTimeout(r, INTERVAL));
+      const res = await api.get(`/scans/${scanId}`);
+      const s: Scan = res.data;
+      if (s.status !== "PROCESSING") return s;
+    }
+
+    throw new Error("Detection timed out.");
   }
 
   async function handleEstimate() {
