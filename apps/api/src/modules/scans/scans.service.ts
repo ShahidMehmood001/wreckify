@@ -193,7 +193,7 @@ export class ScansService {
       vehicle: vehicleInfo,
       provider,
       api_key: apiKey,
-      city: userProfile?.city || 'Lahore',
+      city: userProfile?.city ?? undefined,
     });
 
     const result = validateEstimateResponse(rawEstimate);

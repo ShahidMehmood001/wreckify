@@ -20,5 +20,5 @@ async def estimate(request: EstimateRequest, _=Depends(verify_internal_key)):
         detected_parts=request.detected_parts,
         vehicle=request.vehicle,
         provider=provider,
-        city=request.city or "Lahore",
+        city=request.city,
     )

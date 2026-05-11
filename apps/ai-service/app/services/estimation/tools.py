@@ -51,7 +51,7 @@ def query_parts_price(part_name: str, car_make: Optional[str] = None) -> dict:
 
 
 @tool
-def query_labor_cost(part_name: str, city: str = "Lahore") -> dict:
+def query_labor_cost(part_name: str, city: Optional[str] = None) -> dict:
     """Query the labor cost database for a given part and city.
     Returns min and max labor cost in PKR."""
     session = get_session()
@@ -158,6 +158,6 @@ def _fallback_parts_price(part_name: str) -> dict:
     return {"part_name": part_name, "price_min": mn, "price_max": mx, "listings": 0, "source": "fallback"}
 
 
-def _fallback_labor_cost(part_name: str, city: str) -> dict:
+def _fallback_labor_cost(part_name: str, city: Optional[str]) -> dict:
     mn, mx = _FALLBACK_LABOR.get(part_name.lower(), (2000, 5000))
     return {"part_name": part_name, "city": city, "labor_min": mn, "labor_max": mx, "source": "fallback"}

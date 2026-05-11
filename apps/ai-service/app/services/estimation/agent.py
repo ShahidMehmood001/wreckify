@@ -17,14 +17,14 @@ async def run_estimation_pipeline(
     detected_parts: List[DetectedPart],
     vehicle: Optional[object],
     provider: BaseVisionProvider,
-    city: str = "Lahore",
+    city: Optional[str] = None,
 ) -> EstimateResponse:
     line_items = []
     car_make = vehicle.make if vehicle else None
 
     for part in detected_parts:
         parts_data = _safe_invoke(query_parts_price, {"part_name": part.part_name, "car_make": car_make})
-        labor_data = _safe_invoke(query_labor_cost, {"part_name": part.part_name, "city": city})
+        labor_data = _safe_invoke(query_labor_cost, {"part_name": part.part_name, "city": city}) if city else _fallback_labor_cost(part.part_name, None)
         repair_data = _safe_invoke(calculate_repair_time, {"part_name": part.part_name, "severity": part.severity})
 
         severity_multiplier = {"MINOR": 0.6, "MODERATE": 1.0, "SEVERE": 1.5}.get(part.severity.upper(), 1.0)

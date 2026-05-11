@@ -16,7 +16,7 @@ class EstimateRequest(BaseModel):
     provider: AIProvider = AIProvider.GEMINI
     api_key: Optional[str] = None
     model: Optional[str] = None
-    city: Optional[str] = "Lahore"
+    city: Optional[str] = None
 
 
 class LineItem(BaseModel):
