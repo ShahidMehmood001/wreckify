@@ -20,10 +20,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get("/scans").then((r) => {
-        const all: Scan[] = r.data;
-        setTotalScans(all.length);
-        setScans(all.slice(0, 5));
+      api.get("/scans?limit=5").then((r) => {
+        setTotalScans(r.data.total);
+        setScans(r.data.data);
       }),
       api.get("/users/subscription").then((r) => setSubscription(r.data)),
       api.get("/users/profile").then((r) => setFirstName(r.data.profile?.firstName ?? null)),
