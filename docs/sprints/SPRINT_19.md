@@ -119,6 +119,24 @@ async recoverStuckScans() {
 
 ---
 
+### S19-006 — H-03: Pagination
+
+**Status:** ✅ Done  
+**Files:** `apps/api/src/common/dto/pagination-query.dto.ts`, `apps/api/src/common/interfaces/paginated-result.interface.ts`, `apps/api/src/modules/workshops/dto/list-workshops-query.dto.ts`, `scans.controller.ts`, `scans.service.ts`, `workshops.controller.ts`, `workshops.service.ts`, `apps/web/src/app/(owner)/scans/page.tsx`, `apps/web/src/app/(owner)/workshops/page.tsx`
+
+**Problem:** `GET /scans` and `GET /workshops` returned unbounded arrays — a user with hundreds of scans would receive the full list on every page load.
+
+**Fix:** Offset-based pagination (`page` + `limit`, default 20, max 100) added to both endpoints. Response shape: `{ data, total, page, limit, totalPages }`.
+
+- `PaginationQueryDto` — shared base DTO with `@Type(() => Number)` transform and `class-validator` guards; lives in `common/dto`
+- `ListWorkshopsQueryDto` — extends pagination, adds `city` and `service` filters
+- Controllers use `@Query() query: DTO` instead of multiple `@Query('param')` decorators
+- `PaginatedResult<T>` interface in `common/interfaces` for service return types
+- Frontend scans and workshops pages updated with Previous/Next controls
+- Workshop inquiry dialog uses `limit=100` to fetch all completed scans regardless of pagination
+
+---
+
 ## Sprint Commitment Summary
 
 | ID | Story | Status |
@@ -128,6 +146,7 @@ async recoverStuckScans() {
 | S19-003 | H-02: Scan quota race condition | ✅ Done |
 | S19-004 | H-01: Stuck scan recovery cron | ✅ Done |
 | S19-005 | M-04: FAILED scan UI | ✅ Done |
+| S19-006 | H-03: Pagination | ✅ Done |
 
 ---
 
@@ -135,5 +154,4 @@ async recoverStuckScans() {
 
 | ID | Issue |
 |----|-------|
-| H-03 | Pagination on scan list and workshop list endpoints |
 | H-05 | Sentry error monitoring (API + AI service) |
