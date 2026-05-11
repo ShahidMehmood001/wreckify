@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiOkResponse } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { WorkshopsService } from './workshops.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
@@ -7,6 +7,7 @@ import { UpdateWorkshopDto } from './dto/update-workshop.dto';
 import { CreateInquiryDto } from './dto/create-inquiry.dto';
 import { RespondInquiryDto } from './dto/respond-inquiry.dto';
 import { UpdateWorkshopServicesDto } from './dto/update-workshop-services.dto';
+import { ListWorkshopsQueryDto } from './dto/list-workshops-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,11 +21,9 @@ export class WorkshopsController {
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Browse approved workshops' })
-  @ApiQuery({ name: 'city', required: false })
-  @ApiQuery({ name: 'service', required: false })
-  findAll(@Query('city') city?: string, @Query('service') service?: string) {
-    return this.workshopsService.findAll(city, service);
+  @ApiOperation({ summary: 'Browse approved workshops (paginated)' })
+  findAll(@Query() query: ListWorkshopsQueryDto) {
+    return this.workshopsService.findAll(query.city, query.service, query.page, query.limit);
   }
 
   @Public()

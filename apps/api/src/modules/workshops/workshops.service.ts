@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
@@ -15,21 +16,31 @@ import { WorkshopStatus } from '@prisma/client';
 export class WorkshopsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(city?: string, service?: string) {
-    return this.prisma.workshop.findMany({
-      where: {
-        status: WorkshopStatus.APPROVED,
-        ...(city && { city: { contains: city, mode: 'insensitive' } }),
-        ...(service && {
-          services: { some: { name: { contains: service, mode: 'insensitive' } } },
-        }),
-      },
-      include: {
-        services: true,
-        _count: { select: { inquiries: true } },
-      },
-      orderBy: { rating: { sort: 'desc', nulls: 'last' } },
-    });
+  async findAll(city?: string, service?: string, page = 1, limit = 20): Promise<PaginatedResult<unknown>> {
+    const skip = (page - 1) * limit;
+    const where = {
+      status: WorkshopStatus.APPROVED,
+      ...(city && { city: { contains: city, mode: 'insensitive' as const } }),
+      ...(service && {
+        services: { some: { name: { contains: service, mode: 'insensitive' as const } } },
+      }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.workshop.findMany({
+        where,
+        include: {
+          services: true,
+          _count: { select: { inquiries: true } },
+        },
+        orderBy: { rating: { sort: 'desc', nulls: 'last' } },
+        skip,
+        take: limit,
+      }),
+      this.prisma.workshop.count({ where }),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: string) {

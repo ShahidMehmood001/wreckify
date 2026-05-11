@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, UseGuards, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -136,9 +137,9 @@ export class ScansController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List own scans' })
-  findAll(@CurrentUser('id') userId: string) {
-    return this.scansService.findAll(userId);
+  @ApiOperation({ summary: 'List own scans (paginated)' })
+  findAll(@CurrentUser('id') userId: string, @Query() query: PaginationQueryDto) {
+    return this.scansService.findAll(userId, query.page, query.limit);
   }
 
   @Post(':id/detect')

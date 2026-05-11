@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Building2, MapPin, Phone, Star, Send } from "lucide-react";
+import { Building2, MapPin, Phone, Star, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +16,15 @@ import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Workshop, Scan } from "@/types";
 
+const LIMIT = 20;
+
 export default function WorkshopsPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const [selectedWorkshop, setSelectedWorkshop] = useState<Workshop | null>(null);
   const [message, setMessage] = useState("");
@@ -28,13 +33,21 @@ export default function WorkshopsPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      api.get("/workshops").then((r) => setWorkshops(r.data)).finally(() => setLoading(false)),
-      api.get("/scans").then((r) => {
-        const completed = (r.data as Scan[]).filter((s) => s.status === "COMPLETED");
-        setScans(completed);
-      }),
-    ]);
+    setLoading(true);
+    api.get(`/workshops?page=${page}&limit=${LIMIT}`)
+      .then((r) => {
+        setWorkshops(r.data.data);
+        setTotalPages(r.data.totalPages);
+        setTotal(r.data.total);
+      })
+      .finally(() => setLoading(false));
+  }, [page]);
+
+  useEffect(() => {
+    api.get("/scans?limit=100").then((r) => {
+      const completed = (r.data.data as Scan[]).filter((s) => s.status === "COMPLETED");
+      setScans(completed);
+    });
   }, []);
 
   const filtered = workshops.filter(
@@ -97,6 +110,7 @@ export default function WorkshopsPage() {
           </p>
         </div>
       ) : (
+        <>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((w) => (
             <Card key={w.id} className="hover:shadow-md transition-shadow flex flex-col">
@@ -147,6 +161,33 @@ export default function WorkshopsPage() {
             </Card>
           ))}
         </div>
+
+        {totalPages > 1 && !search && (
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-sm text-muted-foreground">
+              {total} workshop{total !== 1 ? "s" : ""} · Page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p - 1)}
+                disabled={page === 1 || loading}
+              >
+                <ChevronLeft className="w-4 h-4" /> Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page === totalPages || loading}
+              >
+                Next <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       <Dialog open={!!selectedWorkshop} onOpenChange={(open) => { if (!open) setSelectedWorkshop(null); }}>

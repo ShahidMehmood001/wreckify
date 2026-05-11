@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { CreateScanDto } from './dto/create-scan.dto';
@@ -295,16 +296,28 @@ export class ScansService {
     }
   }
 
-  async findAll(userId: string) {
-    return this.prisma.scan.findMany({
-      where: { userId },
-      include: {
-        vehicle: { select: { make: true, model: true, year: true } },
-        images: { select: { url: true, angle: true }, orderBy: { order: 'asc' }, take: 1 },
-        _count: { select: { detectedParts: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(userId: string, page = 1, limit = 20): Promise<PaginatedResult<unknown>> {
+    const skip = (page - 1) * limit;
+    const where = { userId };
+
+    const [data, total] = await Promise.all([
+      this.prisma.scan.findMany({
+        where,
+        include: {
+          vehicle: { select: { make: true, model: true, year: true } },
+          images: { select: { url: true, angle: true }, orderBy: { order: 'asc' }, take: 1 },
+          _count: { select: { detectedParts: true } },
+          costEstimate: { select: { totalMin: true, totalMax: true } },
+          report: { select: { id: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.scan.count({ where }),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(scanId: string, userId: string) {

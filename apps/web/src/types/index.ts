@@ -107,6 +107,7 @@ export interface Scan {
   detectedParts: DetectedPart[];
   costEstimate?: CostEstimate;
   report?: Report;
+  _count?: { detectedParts: number };
 }
 
 export interface Workshop {
