@@ -24,7 +24,7 @@ For full audit details see `docs/TECH_REVIEW.md`.
 | H-02 | Scan quota transaction — atomic check + increment, race condition | TECH_REVIEW H-02 | ✅ Fixed — Sprint 19 |
 | H-03 | Pagination on scan list and workshop list endpoints | TECH_REVIEW H-03 | ✅ Fixed — Sprint 19 |
 | H-04 | AI response schema validation before DB insert | TECH_REVIEW H-04 | ✅ Fixed — Sprint 19 |
-| H-05 | Error monitoring — Sentry integration (API + AI service) | TECH_REVIEW H-05 | Open |
+| H-05 | Error monitoring — Sentry integration (API + AI service) | TECH_REVIEW H-05 | ✅ Fixed — Sprint 19 |
 | H-06 | Missing DB indexes — userId, guestSessionId, senderId, workshopId, status | TECH_REVIEW H-06 | ✅ Fixed — Sprint 19 |
 
 ---

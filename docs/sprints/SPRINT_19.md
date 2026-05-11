@@ -150,8 +150,32 @@ async recoverStuckScans() {
 
 ---
 
-## Remaining High Priority (open)
+### S19-007 — H-05: Sentry Error Monitoring
 
-| ID | Issue |
-|----|-------|
-| H-05 | Sentry error monitoring (API + AI service) |
+**Status:** ✅ Done  
+**Files:** `apps/api/src/instrument.ts`, `apps/api/src/main.ts`, `apps/api/src/common/filters/http-exception.filter.ts`, `apps/ai-service/app/main.py`, `apps/ai-service/app/core/config.py`, `apps/ai-service/requirements.txt`
+
+**Problem:** Unhandled errors in both services were silently swallowed or only printed to stdout — no alerting, no aggregation, no stack traces in production.
+
+**Fix:**
+- **API (NestJS):** `@sentry/nestjs` installed. `instrument.ts` initialises Sentry as the very first import in `main.ts` (required by Sentry's SDK). `HttpExceptionFilter` upgraded to `@Catch()` (catches all exceptions) — any response ≥ 500 is forwarded to `Sentry.captureException()` before the JSON error is returned. 4xx client errors are intentionally not captured. Sentry is a no-op when `SENTRY_DSN` is unset (`enabled: false`).
+- **AI Service (FastAPI):** `sentry-sdk[fastapi]` added to requirements. `sentry_sdk.init()` called in `main.py` before the FastAPI app is instantiated; the FastAPI integration hooks automatically capture 500 errors. Skipped entirely when `SENTRY_DSN` is empty.
+- `SENTRY_DSN` added to both `.env.example` files.
+
+---
+
+## Sprint Commitment Summary
+
+| ID | Story | Status |
+|----|-------|--------|
+| S19-001 | H-06: DB indexes | ✅ Done |
+| S19-002 | H-04: AI response validation | ✅ Done |
+| S19-003 | H-02: Scan quota race condition | ✅ Done |
+| S19-004 | H-01: Stuck scan recovery cron | ✅ Done |
+| S19-005 | M-04: FAILED scan UI | ✅ Done |
+| S19-006 | H-03: Pagination | ✅ Done |
+| S19-007 | H-05: Sentry error monitoring | ✅ Done |
+
+---
+
+## All High Priority items resolved. Sprint 19 CLOSED.
