@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     yolo_model_path: str = "./weights/best.pt"
     database_url: str
     port: int = 8000
+    sentry_dsn: str = ""
 
     class Config:
         env_file = ".env"

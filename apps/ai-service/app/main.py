@@ -1,15 +1,24 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+import sentry_sdk
 from app.api.routes import health, detect, estimate
 from app.services.detection.yolo_service import load_model
 from app.core.config import get_settings
+
+settings = get_settings()
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment="production",
+        traces_sample_rate=0.2,
+    )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Loading YOLO model...")
     load_model()
-    settings = get_settings()
     print(f"AI service ready on port {settings.port}")
     yield
 
