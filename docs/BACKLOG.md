@@ -36,7 +36,7 @@ For full audit details see `docs/TECH_REVIEW.md`.
 | M-01 | Background job queue for AI detection (BullMQ + Redis) | TECH_REVIEW M-01 |
 | M-02 | Cloud image storage — migrate from Docker volume to Cloudinary/S3 | TECH_REVIEW M-02 |
 | M-03 | Server-side vehicle make/model validation against Pakistan cars list | TECH_REVIEW M-03 |
-| M-04 | Scan frontend — handle FAILED status with error + retry UI | TECH_REVIEW M-04 |
+| M-04 | Scan frontend — handle FAILED status with error + retry UI | TECH_REVIEW M-04 | ✅ Fixed — Sprint 19 |
 | M-05 | CORS_ORIGIN env var — set for production domain | TECH_REVIEW M-05 |
 
 ---

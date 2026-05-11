@@ -116,6 +116,28 @@ export default function ScanDetailPage() {
         )}
       </div>
 
+      {/* Failed state */}
+      {scan.status === "FAILED" && (
+        <Card className="border-destructive/50">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <p className="font-semibold text-destructive">Assessment Failed</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  The AI service could not complete damage detection for this scan. Please start a new assessment.
+                </p>
+              </div>
+              <Button onClick={() => router.push("/scan")}>
+                Start New Assessment
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Images */}
       {scan.images && scan.images.length > 0 && (
         <Card>

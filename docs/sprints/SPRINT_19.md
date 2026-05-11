@@ -106,6 +106,19 @@ async recoverStuckScans() {
 
 ---
 
+### S19-005 — M-04: FAILED Scan UI
+
+**Status:** ✅ Done  
+**Files:** `apps/web/src/app/(owner)/scan/page.tsx`, `apps/web/src/app/(owner)/scans/[id]/page.tsx`
+
+**Problem:** When AI detection failed, the new scan flow silently reset to the upload step with only a toast message. The scan detail page showed no FAILED state at all — just an empty detected parts list.
+
+**Fix:**
+- **New scan flow** (`scan/page.tsx`): Added `"failed"` to the `Step` type. Detection catch block now sets `step = "failed"` and stores the error message in state. A new card is rendered with a destructive border, `AlertTriangle` icon, the server error message, and two actions: "Try Again" (resets to upload) and "Back to Scans".
+- **Scan detail** (`scans/[id]/page.tsx`): When `scan.status === "FAILED"`, a prominent error card is rendered above the images section with a "Start New Assessment" CTA linking to `/scan`.
+
+---
+
 ## Sprint Commitment Summary
 
 | ID | Story | Status |
@@ -114,6 +127,7 @@ async recoverStuckScans() {
 | S19-002 | H-04: AI response validation | ✅ Done |
 | S19-003 | H-02: Scan quota race condition | ✅ Done |
 | S19-004 | H-01: Stuck scan recovery cron | ✅ Done |
+| S19-005 | M-04: FAILED scan UI | ✅ Done |
 
 ---
 

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import {
-  Upload, X, Loader2, Zap, CheckCircle, Car, ChevronRight, Plus,
+  Upload, X, Loader2, Zap, CheckCircle, Car, ChevronRight, Plus, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,13 +15,14 @@ import { cn, severityColor, formatCurrency } from "@/lib/utils";
 import { PAKISTAN_CARS, PAKISTAN_CAR_MAKES, VEHICLE_YEARS } from "@/lib/pakistan-cars";
 import type { Scan, Vehicle } from "@/types";
 
-type Step = "upload" | "detecting" | "detected" | "estimating" | "done";
+type Step = "upload" | "detecting" | "detected" | "estimating" | "done" | "failed";
 
 export default function NewScanPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("upload");
   const [files, setFiles] = useState<File[]>([]);
   const [scan, setScan] = useState<Scan | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
@@ -113,8 +114,8 @@ export default function NewScanPage() {
       setStep("detected");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg || "Detection failed. Please try again.");
-      setStep("upload");
+      setErrorMsg(msg || "Detection failed. Please try again.");
+      setStep("failed");
     }
   }
 
@@ -305,6 +306,33 @@ export default function NewScanPage() {
             {!vehicleReady && files.length > 0 && (
               <p className="text-xs text-center text-muted-foreground">Select your vehicle details above to continue.</p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detection Failed */}
+      {step === "failed" && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Detection Failed
+            </CardTitle>
+            <CardDescription>{errorMsg}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              The AI service could not process your images. This may be a temporary issue — please try again in a moment.
+            </p>
+            <Button
+              className="w-full"
+              onClick={() => { setStep("upload"); setErrorMsg(""); }}
+            >
+              Try Again
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => router.push("/scans")}>
+              Back to Scans
+            </Button>
           </CardContent>
         </Card>
       )}
