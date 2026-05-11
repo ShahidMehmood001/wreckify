@@ -18,14 +18,14 @@ For full audit details see `docs/TECH_REVIEW.md`.
 
 ## HIGH PRIORITY (resolve within 2 sprints of going live)
 
-| ID | Issue | Ref |
-|----|-------|-----|
-| H-01 | PROCESSING scan recovery — cron to reset stuck scans after 5 min | TECH_REVIEW H-01 |
-| H-02 | Scan quota transaction — atomic check + increment, race condition | TECH_REVIEW H-02 |
-| H-03 | Pagination on scan list and workshop list endpoints | TECH_REVIEW H-03 |
-| H-04 | AI response schema validation before DB insert | TECH_REVIEW H-04 |
-| H-05 | Error monitoring — Sentry integration (API + AI service) | TECH_REVIEW H-05 |
-| H-06 | Missing DB indexes — userId, guestSessionId, senderId, workshopId, status | TECH_REVIEW H-06 |
+| ID | Issue | Ref | Status |
+|----|-------|-----|--------|
+| H-01 | PROCESSING scan recovery — cron to reset stuck scans after 5 min | TECH_REVIEW H-01 | ✅ Fixed — Sprint 19 |
+| H-02 | Scan quota transaction — atomic check + increment, race condition | TECH_REVIEW H-02 | ✅ Fixed — Sprint 19 |
+| H-03 | Pagination on scan list and workshop list endpoints | TECH_REVIEW H-03 | Open |
+| H-04 | AI response schema validation before DB insert | TECH_REVIEW H-04 | ✅ Fixed — Sprint 19 |
+| H-05 | Error monitoring — Sentry integration (API + AI service) | TECH_REVIEW H-05 | Open |
+| H-06 | Missing DB indexes — userId, guestSessionId, senderId, workshopId, status | TECH_REVIEW H-06 | ✅ Fixed — Sprint 19 |
 
 ---
 
