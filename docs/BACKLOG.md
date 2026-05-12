@@ -59,6 +59,58 @@ For full audit details see `docs/TECH_REVIEW.md`.
 
 ---
 
+### Admin Pricing Controls + Pricing Data Coverage
+
+**Status:** Optional enhancement — not yet scheduled  
+**Origin:** Sprint 21 design discussion (2026-05-12)
+
+#### What was discussed
+
+Three ideas were evaluated for expanding pricing data coverage and giving admin visibility into the scraper:
+
+---
+
+**Idea 1 — Admin Scraper Controls (RECOMMENDED)**
+
+Give admin the ability to trigger the gari.pk scraper on demand and see the current state of the price database.
+
+Scope:
+- "Run Scraper Now" button in admin dashboard — triggers the Python scraper via API, shows live status (running / done / failed)
+- Last run: timestamp, status, records added
+- Run history: last N runs with outcome
+- Price browser: read-only table of all scraped prices, filterable by make / model / part / grade
+- "Add Price" button: admin manually enters reference prices for models not covered by gari.pk (Toyota Corolla, Suzuki Mehran, etc.) — labeled "Wreckify Reference Data" on scan result
+
+DB change required: add `source` (SCRAPED | ADMIN) and `status` (APPROVED | REJECTED) columns to `scraped_part_prices`. Admin entries are APPROVED immediately. Straightforward migration, no data loss.
+
+**Decision: Build this when admin panel work resumes. Estimated 1 sprint.**
+
+---
+
+**Idea 2 — Workshop Price Submissions (REJECTED)**
+
+Allow mechanics to submit part prices (make / model / part / grade / price range / city) via the mechanic portal. Admin reviews and approves before prices go live. Attribution on scan result: "Source: Ali Motors Workshop, Lahore."
+
+**Decision: Rejected. This is a spare parts listing platform — exactly what OLX and PakWheels do. It is a different product, not a Wreckify feature. Workshop submissions create a marketplace dynamic (listings, moderation, attribution, incentives) that is out of scope for Wreckify's core value proposition: AI damage detection + cost estimation + owner-to-workshop connection.**
+
+The pricing data on scan results is a supporting feature. Building a crowd-sourced price submission system makes pricing a product in itself.
+
+---
+
+**Idea 3 — Workshop Spare Parts Inventory (see entry below)**
+
+Related but separate backlog item. Same verdict applies regarding marketplace scope.
+
+---
+
+#### Maximum Coverage Strategy (without building a marketplace)
+
+1. Admin seeds reference prices for the 5–6 most scanned models (Corolla, Mehran, Alto, Cultus) — one-time effort
+2. gari.pk scraper already targets 18 model URLs and auto-picks up new data if gari.pk adds more models
+3. "Market data not yet available for this model" shown gracefully for uncovered models — honest, not a broken experience
+
+---
+
 ### Workshop Spare Parts Inventory
 
 **Status:** Needs R&D  
