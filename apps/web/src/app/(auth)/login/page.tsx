@@ -21,10 +21,22 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+function roleHome(role?: string) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "MECHANIC") return "/mechanic";
+  return "/dashboard";
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
+  const { setAuth, isAuthenticated, user, _hasHydrated } = useAuthStore();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (_hasHydrated && isAuthenticated && user) {
+      router.replace(roleHome(user.role));
+    }
+  }, [_hasHydrated, isAuthenticated, user, router]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),

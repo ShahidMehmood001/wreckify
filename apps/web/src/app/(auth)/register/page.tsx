@@ -1,5 +1,9 @@
+"use client";
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Car, Wrench, ArrowRight } from "lucide-react";
+import { useAuthStore } from "@/store/auth.store";
 
 const paths = [
   {
@@ -18,7 +22,21 @@ const paths = [
   },
 ];
 
+function roleHome(role?: string) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "MECHANIC") return "/mechanic";
+  return "/dashboard";
+}
+
 export default function RegisterPage() {
+  const router = useRouter();
+  const { isAuthenticated, user, _hasHydrated } = useAuthStore();
+
+  useEffect(() => {
+    if (_hasHydrated && isAuthenticated && user) {
+      router.replace(roleHome(user.role));
+    }
+  }, [_hasHydrated, isAuthenticated, user, router]);
   return (
     <div className="w-full max-w-2xl space-y-8">
       <div className="text-center space-y-2">

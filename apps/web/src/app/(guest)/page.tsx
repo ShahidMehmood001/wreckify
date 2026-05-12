@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Zap, Shield, Clock, TrendingUp, Camera, DollarSign, FileText,
+  Zap, Shield, TrendingUp, Camera, DollarSign, FileText,
   Building2, Upload, Loader2, AlertTriangle, CheckCircle2, ChevronRight, Car,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 import { PAKISTAN_CARS, PAKISTAN_CAR_MAKES, VEHICLE_YEARS } from "@/lib/pakistan-cars";
 import type { DetectedPart } from "@/types";
 
@@ -45,7 +47,15 @@ function getOrCreateGuestSessionId(): string {
   return id;
 }
 
+function roleHome(role?: string) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "MECHANIC") return "/mechanic";
+  return "/dashboard";
+}
+
 export default function LandingPage() {
+  const { isAuthenticated, user, _hasHydrated } = useAuthStore();
+  const router = useRouter();
   const [step, setStep] = useState<ScanStep>("idle");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -61,6 +71,12 @@ export default function LandingPage() {
 
   const vehicleReady = !!(guestMake && guestModel && guestYear);
   const guestModels = guestMake ? (PAKISTAN_CARS[guestMake] ?? []) : [];
+
+  useEffect(() => {
+    if (_hasHydrated && isAuthenticated && user) {
+      router.replace(roleHome(user.role));
+    }
+  }, [_hasHydrated, isAuthenticated, user, router]);
 
   useEffect(() => {
     return () => previewUrls.forEach(URL.revokeObjectURL);
