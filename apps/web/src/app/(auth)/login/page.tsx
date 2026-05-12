@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -41,12 +41,6 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
-
-  function roleHome(role: string) {
-    if (role === "ADMIN") return "/admin";
-    if (role === "MECHANIC") return "/mechanic";
-    return "/dashboard";
-  }
 
   async function onSubmit(data: FormData) {
     setLoading(true);
