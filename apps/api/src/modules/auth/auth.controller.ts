@@ -73,13 +73,19 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback — redirects to frontend with tokens' })
   async googleCallback(@Req() req: any, @Res() res: Response) {
-    const result = await this.authService.googleLogin(req.user);
     const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const params = new URLSearchParams({
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-    });
-    return res.redirect(`${frontendUrl}/callback?${params.toString()}`);
+    try {
+      if (!req.user) throw new Error('OAuth authentication returned no user');
+      const result = await this.authService.googleLogin(req.user);
+      const params = new URLSearchParams({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      });
+      return res.redirect(`${frontendUrl}/callback?${params.toString()}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'oauth_failed';
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(msg)}`);
+    }
   }
 
   @Get('me')

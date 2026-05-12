@@ -64,3 +64,10 @@ coverage
 *.lcov
 .nyc_output
 .claude/
+
+# Uploaded files (local dev storage — use cloud storage in prod)
+apps/api/uploads/
+
+# Test assets
+test_car.jpg
+test_car.png

@@ -1,5 +1,17 @@
 import './instrument';
 import 'reflect-metadata';
+
+// Bootstrap proxy BEFORE NestJS loads — passport-oauth2 uses raw https.request
+// which ignores system proxy, so we patch globalAgent here.
+// HTTPS_PROXY / NO_PROXY are loaded from .env by dotenv before ConfigModule runs.
+import * as dotenv from 'dotenv';
+dotenv.config();
+if (process.env.GLOBAL_AGENT_HTTPS_PROXY) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { bootstrap } = require('global-agent');
+  bootstrap();
+}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

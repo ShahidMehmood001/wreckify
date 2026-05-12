@@ -137,6 +137,7 @@ export class AuthService {
 
     if (!user) {
       const freePlan = await this.prisma.plan.findUnique({ where: { name: PlanName.FREE } });
+      if (!freePlan) throw new BadRequestException('Plan configuration missing. Run db:seed first.');
       user = await this.prisma.user.create({
         data: {
           email: googleUser.email,
@@ -150,7 +151,7 @@ export class AuthService {
           },
           subscription: {
             create: {
-              planId: freePlan!.id,
+              planId: freePlan.id,
               scansUsed: 0,
               resetAt: addMonths(new Date(), 1),
             },

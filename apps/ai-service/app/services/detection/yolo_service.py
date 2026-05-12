@@ -115,7 +115,13 @@ async def _detect_demo_mode(
     for part_name in demo_parts:
         severity = random.choice(["MINOR", "MODERATE", "SEVERE"])
         url = images[0][0] if images else ""
-        description = await provider.describe_damage([url] if url else [], part_name, severity, vehicle_str)
+        try:
+            description = await asyncio.wait_for(
+                provider.describe_damage([url] if url else [], part_name, severity, vehicle_str),
+                timeout=8.0,
+            )
+        except Exception:
+            description = f"{severity.capitalize()} damage to {part_name.replace('_', ' ')} detected."
         parts.append(DetectedPart(
             part_name=part_name,
             severity=severity,

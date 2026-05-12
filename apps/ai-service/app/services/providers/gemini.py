@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -21,7 +22,7 @@ class GeminiProvider(BaseVisionProvider):
             genai.configure(api_key=self.api_key)
 
             image_parts = []
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
                 for url in image_urls[:2]:
                     resp = await client.get(url)
                     if resp.status_code == 200:
@@ -31,7 +32,7 @@ class GeminiProvider(BaseVisionProvider):
                         })
 
             vehicle_context = f"Vehicle: {vehicle_str}. " if vehicle_str else ""
-            model = genai.GenerativeModel(self.model)
+            model_obj = genai.GenerativeModel(self.model)
             prompt = (
                 f"You are a vehicle damage assessment expert. "
                 f"{vehicle_context}"
@@ -40,15 +41,18 @@ class GeminiProvider(BaseVisionProvider):
             )
 
             if image_parts:
-                parts = [{"inline_data": p} for p in image_parts] + [prompt]
-                response = model.generate_content(parts)
+                content = [{"inline_data": p} for p in image_parts] + [prompt]
             else:
-                response = model.generate_content(
-                    f"{prompt} Note: No image available, provide a generic description based on severity."
-                )
+                content = f"{prompt} Note: No image available, provide a generic description based on severity."
 
+            # Run the synchronous Gemini call in a thread with a hard timeout
+            loop = asyncio.get_running_loop()
+            response = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: model_obj.generate_content(content)),
+                timeout=10.0,
+            )
             return response.text.strip()
-        except Exception as e:
+        except Exception:
             return f"{severity.capitalize()} damage to {part_name.replace('_', ' ')} detected."
 
     def get_llm(self):

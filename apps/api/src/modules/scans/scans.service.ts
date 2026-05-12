@@ -151,8 +151,11 @@ export class ScansService {
   async triggerEstimation(scanId: string, userId: string) {
     const scan = await this.getScanOrThrow(scanId, userId);
 
-    if (!scan.detectedParts.length) {
+    if (scan.status !== 'COMPLETED') {
       throw new BadRequestException('Run damage detection before requesting a cost estimate');
+    }
+    if (!scan.detectedParts.length) {
+      throw new BadRequestException('No damage was detected in this scan — there are no parts to estimate');
     }
 
     if (scan.costEstimate) return this.getScanOrThrow(scanId, userId);

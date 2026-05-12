@@ -5,7 +5,7 @@ import io
 
 
 async def load_image_from_url(url: str) -> np.ndarray:
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=30, trust_env=False) as client:
         response = await client.get(url)
         response.raise_for_status()
 
